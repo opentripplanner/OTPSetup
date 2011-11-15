@@ -5,9 +5,15 @@ from django.conf.urls.defaults import patterns, include, url
 # admin.autodiscover()
 
 urlpatterns = patterns('',
-    # Examples:
-    # url(r'^$', 'otpsetup.views.home', name='home'),
-    # url(r'^otpsetup/', include('otpsetup.foo.urls')),
+    url(r'^accounts/', include('registration.backends.default.urls')),
+
+    url(r'^$', 'otpsetup.client.views.index', name='index'),
+    url(r'^create_request$', 'otpsetup.client.views.create_request', name='create_request'),
+    url(r'^upload$', 'otpsetup.client.views.upload', name='upload'),
+    url(r'^transload$', 'otpsetup.client.views.transload', name='transload'),
+    url(r'^done_upload$', 'otpsetup.client.views.done_upload', name='done_upload'),
+    url(r'^done_transload$', 'otpsetup.client.views.done_transload', name='done_transload'),
+    url(r'^finalize_request$', 'otpsetup.client.views.finalize_request', name='finalize_request'),
 
     # Uncomment the admin/doc line below to enable admin documentation:
     # url(r'^admin/doc/', include('django.contrib.admindocs.urls')),

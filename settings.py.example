@@ -1,4 +1,14 @@
 # Django settings for otpsetup project.
+from registration_defaults.settings import *
+
+AWS_ACCESS_KEY_ID = "your aws access key"
+AWS_SECRET_KEY = "your aws secret key"
+
+S3_BUCKET = "otp-gtfs"
+
+DEFAULT_FROM_EMAIL = "your_email@example.com"
+
+LOGIN_REDIRECT_URL = "/"
 
 DEBUG = True
 TEMPLATE_DEBUG = DEBUG
@@ -106,6 +116,7 @@ TEMPLATE_DIRS = (
     # Put strings here, like "/home/html/django_templates" or "C:/www/django/templates".
     # Always use forward slashes, even on Windows.
     # Don't forget to use absolute paths, not relative paths.
+    REGISTRATION_TEMPLATE_DIR,
 )
 
 INSTALLED_APPS = (
@@ -115,6 +126,8 @@ INSTALLED_APPS = (
     'django.contrib.sites',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'otpsetup.client',
+    'registration'
     # Uncomment the next line to enable the admin:
     # 'django.contrib.admin',
     # Uncomment the next line to enable admin documentation:
