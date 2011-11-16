@@ -94,7 +94,7 @@ def finalize_request(request):
     if irequest.user != request.user:
         return redirect("/")
 
-    exchange = Exchange("amq.direct", "direct", durable=True)
+    exchange = Exchange("amq.direct", type="direct", durable=True)
     conn = DjangoBrokerConnection()
 
     publisher = conn.Producer(routing_key="transload",
