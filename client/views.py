@@ -85,7 +85,7 @@ def done_transload(request):
     gtfs_file = GtfsFile(instance_request=irequest, transload_url=request.REQUEST['transload_url'])
     gtfs_file.save()
 
-    return render_to_response(request, 'transload.html', locals())
+    return redirect("/transload?request_id=%s" % request_id)
 
 @login_required
 def finalize_request(request):
@@ -104,7 +104,6 @@ def finalize_request(request):
         if gtfs_file.transload_url:
             transloading = True
             publisher.send({"transload": gtfs_file.transload_url, "id" : gtfs_file.id})
-            publisher.close()
         else:
             s3_keys.append(gtfs_file.s3_key)
     if transloading:
@@ -114,6 +113,7 @@ def finalize_request(request):
                               routing_key="validate_request")
         publisher.send({"files" : s3_keys, "request_id" : irequest.id})
         irequest.state = 'submitted'
+    publisher.close()
     irequest.save()
     return render_to_response(request, 'request_submitted.html', locals())
 
