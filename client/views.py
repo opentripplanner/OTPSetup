@@ -1,17 +1,17 @@
 #!/usr/bin/python
 
-from carrot.connection import DjangoBrokerConnection
-from carrot.messaging import Publisher
-
 from otpsetup.client.models import InstanceRequestForm, InstanceRequest, GtfsFile
 from datetime import datetime, timedelta
 
-from otpsetup.client.shortcuts import render_to_response
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect
 
 from json import dumps
+from kombu import Exchange
+
+from otpsetup.shortcuts import render_to_response
+from otpsetup.shortcuts import DjangoBrokerConnection
 
 import base64
 import hmac, sha
@@ -94,27 +94,26 @@ def finalize_request(request):
     if irequest.user != request.user:
         return redirect("/")
 
+    exchange = Exchange("amq.direct", "direct", durable=True)
     conn = DjangoBrokerConnection()
 
-    publisher = Publisher(connection=conn,
-                          routing_key="transload",
-                          exchange="amq.direct")
+    publisher = conn.Producer(routing_key="transload",
+                              exchange=exchange)
 
     transloading=False
     s3_keys = []
     for gtfs_file in irequest.gtfsfile_set.all():
         if gtfs_file.transload_url:
             transloading = True
-            publisher.send({"transload": gtfs_file.transload_url, "id" : gtfs_file.id})
+            publisher.publish({"transload": gtfs_file.transload_url, "id" : gtfs_file.id})
         else:
             s3_keys.append(gtfs_file.s3_key)
     if transloading:
         irequest.state = 'pre_transload'
     else:
-        publisher = Publisher(connection=conn,
-                              routing_key="validate_request",
-                              exchange="amq.direct")
-        publisher.send({"files" : s3_keys, "request_id" : irequest.id})
+        publisher = conn.Producer(routing_key="validate_request",
+                                  exchange=exchange)
+        publisher.publish({"files" : s3_keys, "request_id" : irequest.id})
         irequest.state = 'submitted'
     publisher.close()
     irequest.save()
