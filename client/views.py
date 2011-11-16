@@ -97,7 +97,9 @@ def finalize_request(request):
     conn = DjangoBrokerConnection()
 
     publisher = Publisher(connection=conn,
-                          routing_key="transload")
+                          routing_key="transload",
+                          exchange="amq.direct")
+
     transloading=False
     s3_keys = []
     for gtfs_file in irequest.gtfsfile_set.all():
@@ -110,7 +112,8 @@ def finalize_request(request):
         irequest.state = 'pre_transload'
     else:
         publisher = Publisher(connection=conn,
-                              routing_key="validate_request")
+                              routing_key="validate_request",
+                              exchange="amq.direct")
         publisher.send({"files" : s3_keys, "request_id" : irequest.id})
         irequest.state = 'submitted'
     publisher.close()

@@ -1,4 +1,5 @@
 
 
 rabbitmqctl add_user carrot [password]
-rabbitmqctl set_permissions -p '/carrot' carrot '/carrot' '/carrot', '/carrot'
+rabbitmqctl set_permissions -p /carrot carrot ".*" ".*" ".*"
+
