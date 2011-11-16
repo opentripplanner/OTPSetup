@@ -8,6 +8,7 @@ from datetime import datetime, timedelta
 
 from otpsetup.client.shortcuts import render_to_response
 from django.conf import settings
+from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect
 
 from json import dumps
@@ -18,6 +19,7 @@ import hmac, sha
 def index(request):   
     return render_to_response(request, 'index.html')
 
+@login_required
 def create_request(request):
     if request.method == "GET":
         return render_to_response(request, 'create_request.html', locals())
@@ -30,6 +32,7 @@ def create_request(request):
         irequest.save()
         return redirect("/upload?request_id=%s" % irequest.id)
 
+@login_required
 def upload(request):
     #todo: prevent too many uploads by the same IP address
     request_id = request.GET['request_id']
@@ -51,6 +54,7 @@ def upload(request):
     s3_bucket = settings.S3_BUCKET
     return render_to_response(request, 'upload.html', locals())
 
+@login_required
 def done_upload(request):
     #get the instance request id out of the key
     key = request.REQUEST['key']
@@ -64,12 +68,14 @@ def done_upload(request):
 
     return redirect("/upload?request_id=%s" % irequest.id)
 
+@login_required
 def transload(request):
     request_id = request.GET['request_id']
     irequest = InstanceRequest.objects.get(id=request_id)
     uploaded = irequest.gtfsfile_set.count()
     return render_to_response(request, 'transload.html', locals())
 
+@login_required
 def done_transload(request):
 
     irequest = InstanceRequest.objects.get(id=request_id)
@@ -81,6 +87,7 @@ def done_transload(request):
 
     return render_to_response(request, 'done_transload.html', locals())
 
+@login_required
 def finalize_request(request):
     request_id = request.POST['request_id']
     irequest = InstanceRequest.objects.get(id=request_id)
