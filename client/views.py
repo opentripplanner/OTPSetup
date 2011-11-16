@@ -70,22 +70,22 @@ def done_upload(request):
 
 @login_required
 def transload(request):
-    request_id = request.GET['request_id']
+    request_id = request.REQUEST['request_id']
     irequest = InstanceRequest.objects.get(id=request_id)
     uploaded = irequest.gtfsfile_set.count()
     return render_to_response(request, 'transload.html', locals())
 
 @login_required
 def done_transload(request):
-
+    request_id = request.REQUEST['request_id']
     irequest = InstanceRequest.objects.get(id=request_id)
     if irequest.user != request.user:
         return redirect("/")
 
-    gtfs_file = GtfsFile(instance_request=irequest, transload_url=request.GET['transload_url'])
+    gtfs_file = GtfsFile(instance_request=irequest, transload_url=request.REQUEST['transload_url'])
     gtfs_file.save()
 
-    return render_to_response(request, 'done_transload.html', locals())
+    return render_to_response(request, 'transload.html', locals())
 
 @login_required
 def finalize_request(request):
