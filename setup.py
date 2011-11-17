@@ -6,6 +6,7 @@ setup(
     install_requires=[
       "Django==1.3.1",
       "django-registration",
-      "kombu"
+      "kombu",
+      "boto"
       ],
 )
