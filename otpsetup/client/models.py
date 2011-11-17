@@ -9,8 +9,8 @@ class InstanceRequest(models.Model):
     decision_date = models.DateTimeField('date decided', null=True)
 
     user = models.ForeignKey(User)
-    agency = models.CharField(max_length=40)
-    comments = models.CharField(max_length=20000)
+    agency = models.CharField(max_length=40, blank=True)
+    comments = models.CharField(max_length=20000, null=True, blank=True)
     ip = models.CharField(max_length=15)
 
 class GtfsFile(models.Model):
