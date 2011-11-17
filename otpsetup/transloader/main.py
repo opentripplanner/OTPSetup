@@ -82,4 +82,5 @@ with DjangoBrokerConnection() as conn:
 
     with conn.Consumer(queue, callbacks=[lambda body, message: process_transload(conn, body, message)]) as consumer:
         # Process messages and handle events on all channels
-        conn.drain_events()
+        while True:
+            conn.drain_events()

@@ -1,5 +1,0 @@
-
-rabbitmqctl add_vhost /kombu
-rabbitmqctl add_user kombu [password]
-rabbitmqctl set_permissions -p /kombu kombu ".*" ".*" ".*"
-
