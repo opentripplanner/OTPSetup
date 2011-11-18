@@ -6,6 +6,7 @@
   <th>Requestor</th>
   <th>State</th>
   <th>Action</th>
+  <th>Errors</th>
 </tr>
 {% for request in requests %}
 <tr>
@@ -21,6 +22,12 @@
   <input name="action" value="Cancel" type="submit"/>
 {% endif %}
 </form></td>
-
+<td>
+{% if request.state == "submitted" %}
+  {% for gtfs in request.gtfsfile_set.all %}
+    {{ gtfs.validation_output }}
+  {% endfor %}
+{% endif %}
+</td>
 
 {% endfor %}
