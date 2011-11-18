@@ -106,7 +106,7 @@ def finalize_request(request):
     for gtfs_file in irequest.gtfsfile_set.all():
         if gtfs_file.transload_url:
             transloading = True
-            to_transload.add(gtfs_file)
+            to_transload.append(gtfs_file)
         else:
             s3_keys.append(gtfs_file.s3_key)
 
