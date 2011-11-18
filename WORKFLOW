@@ -1,0 +1,29 @@
+This document explains the various messages that are sent through
+AMPQ.
+
+Routing key: transload
+Parameters: {'transload': URL, 'gtfs_file_id' : integer}
+Sent by: webapp
+Handled by: transloader
+This is sent when GTFS needs to be downloaded from a URL and loaded into S3.
+
+Routing key: validate_request
+Parameters: {'files' : [list of s3 keys], 'request_id' : integer}
+Sent by: webapp, transloader
+Handled by: checker
+
+This causes the GTFS validator to validate the GTFS data.
+
+Routing key: validation_done
+Parameters: {'request_id' : integer, 'output' : [{'key': s3 id, 'errors' : text}, ...]})
+Sent by: checker
+Handled by: django_consumer
+
+django_consumer updates the webapp database and sends out an email
+to the admins requesting that the validated data be approved
+
+Routing key: create_instance
+Parameters: { 'files' : [list of s3 keys], 'request_id' : integer }
+Sent by: webapp
+Handled by: Kevin...
+
