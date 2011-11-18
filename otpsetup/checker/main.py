@@ -2,14 +2,11 @@
 
 from boto import connect_s3
 from boto.s3.key import Key
-from datetime import datetime
 from kombu import Exchange, Queue
 from otpsetup.shortcuts import DjangoBrokerConnection
 from otpsetup.client.models import GtfsFile
 from otpsetup import settings
 from shutil import copyfileobj
-from StringIO import StringIO
-from urllib2 import urlopen
 
 import os
 import subprocess
@@ -49,6 +46,8 @@ def validate(conn, body, message):
         key.get_contents_to_filename(path)
         result = subprocess.Popen(["feedvalidator.py", "-n", "--output=CONSOLE", "-l", "10", path], stdout=subprocess.PIPE)
         out.append({"key" : s3_id, "errors" : result.stdout.read()})
+        os.remove(path)
+    os.rmdir(directory)
     publisher = conn.Producer(routing_key="validation_done",
                               exchange=exchange)
     publisher.publish({'request_id' : body['request_id'], 'output' : out})
