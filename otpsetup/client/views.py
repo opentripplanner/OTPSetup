@@ -42,7 +42,7 @@ def upload(request):
 
     uploaded = irequest.gtfsfile_set.count()
 
-    upload_filename = "uploads/%s/%s" % (request_id, datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.zip"))
+    upload_filename = "uploads/%s/%s_${filename}" % (request_id, datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S"))
     aws_access_key_id = settings.AWS_ACCESS_KEY_ID
 
     after_upload_url = request.build_absolute_uri("/done_upload")
@@ -102,21 +102,27 @@ def finalize_request(request):
 
     transloading=False
     s3_keys = []
+    to_transload = []
     for gtfs_file in irequest.gtfsfile_set.all():
         if gtfs_file.transload_url:
             transloading = True
-            publisher.publish({"transload": gtfs_file.transload_url, "id" : gtfs_file.id})
+            to_transload.add(gtfs_file)
         else:
             s3_keys.append(gtfs_file.s3_key)
+
     if transloading:
         irequest.state = 'pre_transload'
+        irequest.save()
+        for gtfs_file in to_transload:
+            publisher.publish({"transload": gtfs_file.transload_url, "gtfs_file_id" : gtfs_file.id})
     else:
+        irequest.state = 'submitted'
+        irequest.save()
         publisher = conn.Producer(routing_key="validate_request",
                                   exchange=exchange)
         publisher.publish({"files" : s3_keys, "request_id" : irequest.id})
-        irequest.state = 'submitted'
     publisher.close()
-    irequest.save()
+
     return render_to_response(request, 'request_submitted.html', locals())
 
 def make_s3_policy(filename, url):

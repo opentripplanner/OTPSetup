@@ -24,20 +24,23 @@ def s3_bucket(cache = {}):
         return cache['bucket']
     return bucket
 
-def s3_key(bucket, irequest):
+def s3_key(bucket, gtfsfile):
     k = Key(bucket)
-    k.key = "uploads/%s/%s" % (irequest.id, datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S.zip"))
+    irequest = gtfsfile.instance_request
+    filename = gtfsfile.transload_url.split("/")[-1]
+    filename = ".".join(filename.split(".")[:-1])
+    k.key = "uploads/%s/%s_%s.zip" % (irequest.id, datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S"), filename)
     return k
 
 def process_transload(conn, body, message):
     #attempt to download the URL
     url = body['transload']
     #make sure this still makes sense
-    gtfs = GtfsFile.objects.get(id=body['id'])
+    gtfs = GtfsFile.objects.get(id=body['gtfs_file_id'])
     irequest = gtfs.instance_request
     if irequest.state != "pre_transload":
         #this request has already been cancelled or is otherwise irrelevant
-        print "wrong state"
+        print "wrong state", irequest.state, body
         message.ack()
         return 
 
@@ -56,7 +59,7 @@ def process_transload(conn, body, message):
     copyfileobj(resp, tmpfile)
 
     bucket = s3_bucket()
-    key = s3_key(bucket, irequest)
+    key = s3_key(bucket, gtfs)
 
     key.set_contents_from_file(tmpfile)
 
