@@ -44,11 +44,9 @@ def approve_request(request):
             key.key = gtfs.s3_key
             key.delete()
 
-            
-
     elif action == "Approve":
         irequest.state = "approved"
         files = [gtfsfile.s3_key for gtfsfile in irequest.gtfsfile_set.all()]
-        publisher.publish({"files": files})
+        publisher.publish({"files": files, request_id : irequest.id})
     irequest.save()
     return redirect("/admin")
