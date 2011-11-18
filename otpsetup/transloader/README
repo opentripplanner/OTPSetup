@@ -1,0 +1,6 @@
+This process downloads GTFS and stores it in S3
+
+This must be run on the same machine as the web front-end.
+
+AMPQ input: transload
+AMPQ output: validate_request

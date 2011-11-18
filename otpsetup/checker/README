@@ -1,0 +1,6 @@
+This process downloads GTFS from S3 and validates it.
+
+This can be run anywhere.
+
+AMPQ input: validate_request
+AMPQ output: validation_done
