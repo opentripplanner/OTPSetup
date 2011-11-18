@@ -15,8 +15,9 @@ class InstanceRequest(models.Model):
 
 class GtfsFile(models.Model):
     instance_request = models.ForeignKey(InstanceRequest)
-    s3_key = models.CharField(max_length=200, null=True)
+    s3_key = models.CharField(max_length=200, null=True, db_index=True)
     transload_url = models.CharField(max_length=200, null=True)
+    validation_output = models.CharField(max_length=20000, null=True, blank=True)
 
 class InstanceRequestForm(ModelForm):
     class Meta:

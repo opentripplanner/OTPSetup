@@ -14,6 +14,7 @@ urlpatterns = patterns('',
     url(r'^done_upload$', 'otpsetup.client.views.done_upload', name='done_upload'),
     url(r'^done_transload$', 'otpsetup.client.views.done_transload', name='done_transload'),
     url(r'^finalize_request$', 'otpsetup.client.views.finalize_request', name='finalize_request'),
+    url(r'^admin/', include('otpsetup.client.admin_urls')),
 
     # Uncomment the admin/doc line below to enable admin documentation:
     # url(r'^admin/doc/', include('django.contrib.admindocs.urls')),

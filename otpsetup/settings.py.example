@@ -10,6 +10,8 @@ DEFAULT_FROM_EMAIL = "your_email@example.com"
 
 LOGIN_REDIRECT_URL = "/"
 
+ADMIN_EMAILS = ['otp_admin@example.com']
+
 DEBUG = True
 TEMPLATE_DEBUG = DEBUG
 
