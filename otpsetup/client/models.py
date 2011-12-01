@@ -3,8 +3,15 @@ from django.db import models
 from django.forms import ModelForm
 from django.contrib.auth.models import User
 
+STATES = (("running", "Running"),
+          ("building", "Request not yet submitted"),
+          ("pre_transload", "Getting GTFS"),
+          ("submitted", "Validating"),
+          ("rejected", "Rejected"),
+          ("accepted", "Accepted, graph building"),
+          )
 class InstanceRequest(models.Model):
-    state = models.CharField(max_length=15, default='submitted') #building, pre_transload, submitted, accepted, rejected
+    state = models.CharField(max_length=15, default='building', choices = STATES)
     submit_date = models.DateTimeField('date submitted', default=datetime.now)
     decision_date = models.DateTimeField('date decided', null=True)
 
