@@ -9,7 +9,6 @@ from django.conf import settings
 from django.contrib.auth.decorators import permission_required
 from django.shortcuts import redirect
 
-from json import dumps
 from kombu import Exchange
 
 from otpsetup.client.models import InstanceRequest, GtfsFile
@@ -47,6 +46,6 @@ def approve_request(request):
     elif action == "Approve":
         irequest.state = "approved"
         files = [gtfsfile.s3_key for gtfsfile in irequest.gtfsfile_set.all()]
-        publisher.publish({"files": files, request_id : irequest.id})
+        publisher.publish({"files": files, "request_id" : irequest.id})
     irequest.save()
     return redirect("/admin")
