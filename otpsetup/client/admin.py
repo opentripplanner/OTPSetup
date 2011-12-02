@@ -36,7 +36,19 @@ def accept_instance_request(modeladmin, request, queryset):
 
     #launch a graph builder EC2 instance
     ec2_conn = connect_ec2(settings.AWS_ACCESS_KEY_ID, settings.AWS_SECRET_KEY)
+
     image_obj = AmazonMachineImage.objects.get(default_for_new_instances=True, machine_type='graph builder')
+
+    #do we need an instance?
+    reservations = ec2_conn.get_all_instances()
+    running_instances = []
+    for reservation in reservations:
+        for instance in reservation.instances:
+            if instance.image_id == image_obj.ami_id:
+                #TODO: ping that instance to tell it to keep alive
+                #and if it is dead, start a new one
+                return #nope
+
     image = ec2_conn.get_image(image_obj.ami_id)
     image.run()
 
