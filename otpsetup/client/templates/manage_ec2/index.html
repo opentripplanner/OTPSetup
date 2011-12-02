@@ -1,0 +1,32 @@
+Running instances:
+
+{% for instance in running_instances %}
+
+<div>
+<form action="/manage_ec2/stop_instance" method="POST">
+{{ instance.image.machine_type }} {{ instance.image.version }} : {{ instance.instance.state }}
+
+{% if instance.instance.state == 'running' %}
+  {% csrf_token %}
+    <input type="hidden" name="instance_id" value="{{instance.instance.id}}" />
+    <input type="submit" value="Stop instance">
+{% endif %}
+</form>
+
+</div>
+
+{% endfor %}
+
+<hr>
+
+Amazon Machine Images:
+{% for image in images %}
+<div>
+<form action="/manage_ec2/start_instance" method="POST">
+{{ image.machine_type }} {{ image.version }} : 
+{% csrf_token %}
+  <input type="hidden" name="image_id" value="{{image.id}}" />
+  <input type="submit" value="Start up one of these">
+</form>
+</div>
+{% endfor %}
