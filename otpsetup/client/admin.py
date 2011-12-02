@@ -5,7 +5,7 @@ from datetime import datetime
 from django.conf import settings
 from django.contrib import admin
 from kombu import Exchange
-from models import InstanceRequest, AmazonInstance, GtfsFile
+from models import InstanceRequest, AmazonMachineImage, GtfsFile
 
 
 from otpsetup.client.lib.buttonable_model_admin import ButtonableModelAdmin
@@ -99,6 +99,7 @@ class InstanceRequestAdmin(ButtonableModelAdmin):
 
 admin.site.register(InstanceRequest, InstanceRequestAdmin)
 
-class AmazonInstanceAdmin(admin.ModelAdmin):
-    pass
-admin.site.register(AmazonInstance, AmazonInstanceAdmin)
+class AmazonMachineImageAdmin(admin.ModelAdmin):
+    list_display = ('machine_type', 'version', 'ami_id')
+
+admin.site.register(AmazonMachineImage, AmazonMachineImageAdmin)

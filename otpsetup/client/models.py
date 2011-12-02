@@ -31,7 +31,9 @@ class InstanceRequestForm(ModelForm):
         model = InstanceRequest
         fields = ('comments', 'agency')
 
-class AmazonInstance(models.Model):
-    ami_id = models.CharField(max_length=200)
-    machine_type = models.CharField(max_length=20)
+MACHINE_TYPES=[('graph builder', 'Graph Builder', ), ('webapp', 'Webapp')]
 
+class AmazonMachineImage(models.Model):
+    ami_id = models.CharField(max_length=200)
+    machine_type = models.CharField(max_length=20, choices=MACHINE_TYPES)
+    version = models.CharField(max_length=20)
