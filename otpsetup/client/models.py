@@ -37,3 +37,8 @@ class AmazonMachineImage(models.Model):
     ami_id = models.CharField(max_length=200)
     machine_type = models.CharField(max_length=20, choices=MACHINE_TYPES)
     version = models.CharField(max_length=20)
+    default_for_new_instances = models.BooleanField(max_length=20, default=True)
+    def save(self, force_insert=False, force_update=False):
+        if self.default_for_new_instances:
+            AmazonMachineImage.objects.filter(~Q(id = self.id) & Q(machine_type = self.machine_type)).update(default_for_new_instances=False)
+        super(Test, self).save(force_insert, force_update)

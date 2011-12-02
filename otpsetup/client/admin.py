@@ -1,5 +1,5 @@
 
-from boto import connect_s3
+from boto import connect_s3, connect_ec2
 from boto.s3.key import Key
 from datetime import datetime
 from django.conf import settings
@@ -34,6 +34,12 @@ def accept_instance_request(modeladmin, request, queryset):
             irequest.decision_date = datetime.now()
             irequest.save()
 
+    #launch a graph builder EC2 instance
+    ec2_conn = connect_ec2(settings.AWS_ACCESS_KEY_ID, settings.AWS_SECRET_KEY)
+    image_obj = AmazonMachineImage.objects.get(default_for_new_instances=True, machine_type='graph builder')
+    image = ec2_conn.get_image(image_obj.ami_id)
+    image.run()
+
 accept_instance_request.short_description = "Send an instance request to the graph builder"
 
 def reject_instance_request(modeladmin, request, queryset):
@@ -55,6 +61,7 @@ def reject_instance_request(modeladmin, request, queryset):
             irequest.state = "rejected"
             irequest.decision_date = datetime.now()
             irequest.save()
+
 
 reject_instance_request.short_description = "Reject an instance request"
 
@@ -100,6 +107,6 @@ class InstanceRequestAdmin(ButtonableModelAdmin):
 admin.site.register(InstanceRequest, InstanceRequestAdmin)
 
 class AmazonMachineImageAdmin(admin.ModelAdmin):
-    list_display = ('machine_type', 'version', 'ami_id')
+    list_display = ('machine_type', 'version', 'ami_id', 'default_for_new_instances')
 
 admin.site.register(AmazonMachineImage, AmazonMachineImageAdmin)
