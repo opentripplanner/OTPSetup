@@ -9,7 +9,8 @@ Running instances:
 {% if instance.instance.state == 'running' %}
   {% csrf_token %}
     <input type="hidden" name="instance_id" value="{{instance.instance.id}}" />
-    <input type="submit" value="Stop instance">
+    <input type="submit" name="action" value="Stop instance">
+    <input type="submit" name="action" value="Terminate instance">
 {% endif %}
 </form>
 

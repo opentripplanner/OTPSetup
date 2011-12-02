@@ -41,5 +41,9 @@ def start_instance(request):
 def stop_instance(request):
     conn = connect_ec2(settings.AWS_ACCESS_KEY_ID, settings.AWS_SECRET_KEY)
     instance_id = request.REQUEST['instance_id']
-    conn.stop_instances([instance_id])
+    action = request.REQUEST['action']
+    if action == 'Terminate instance':
+        conn.terminate_instances([instance_id])
+    else:
+        conn.stop_instances([instance_id])
     return redirect('/manage_ec2')
