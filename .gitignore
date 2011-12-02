@@ -3,3 +3,5 @@
 settings.py
 OTPSetup.egg-info
 dist
+_defaults
+otpsetup/client/templates/registration
