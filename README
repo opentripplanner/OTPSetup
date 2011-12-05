@@ -1,3 +1,6 @@
+apt-get install rabbitmq-server (or equivalent)
+
+python setup.py install
 
 rabbitmqctl add_vhost /kombu
 rabbitmqctl add_user kombu [password]
