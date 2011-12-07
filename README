@@ -2,8 +2,18 @@ apt-get install rabbitmq-server (or equivalent)
 
 python setup.py install
 
+wget https://bitbucket.org/ubernostrum/django-registration/downloads/django-registration-0.8-alpha-1.tar.gz
+
+tar -xzf django-registration-0.8-alpha-1.tar.gz
+cd django-registration-0.8-alpha-1/
+python setup.py install 
+
+easy_install django-registration-defaults
+
 rabbitmqctl add_vhost /kombu
 rabbitmqctl add_user kombu [password]
 rabbitmqctl set_permissions -p /kombu kombu ".*" ".*" ".*"
 
 python manage.py overload admin client
+
+
