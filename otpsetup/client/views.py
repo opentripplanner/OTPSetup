@@ -42,12 +42,13 @@ def upload(request):
 
     uploaded = irequest.gtfsfile_set.count()
 
-    upload_filename = "uploads/%s/%s_${filename}" % (request_id, datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S"))
+    base_filename = "uploads/%s/%s_" % (request_id, datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S"))
+    upload_filename = base_filename + "${filename}"
     aws_access_key_id = settings.AWS_ACCESS_KEY_ID
 
     after_upload_url = request.build_absolute_uri("/done_upload")
 
-    policy = make_s3_policy(upload_filename, after_upload_url)
+    policy = make_s3_policy(base_filename, after_upload_url)
     base64_policy = base64.b64encode(policy)
     signature = s3_sign(policy, settings.AWS_SECRET_KEY)
 
@@ -125,14 +126,14 @@ def finalize_request(request):
 
     return render_to_response(request, 'request_submitted.html', locals())
 
-def make_s3_policy(filename, url):
+def make_s3_policy(base_filename, url):
     expiration =  datetime.utcnow() + timedelta(0,500)
 
     policy = {
         "expiration": expiration.strftime("%Y-%m-%dT%H:%M:%SZ"),
         "conditions": [
             {"bucket": settings.S3_BUCKET}, 
-            {"key" : filename},
+            ["starts-with", "$key", base_filename],
             {"acl": "private"},
             {"success_action_redirect": url},
             ["content-length-range", 1024, 1024*1024*300]
