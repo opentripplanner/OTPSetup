@@ -28,5 +28,10 @@ to the admins requesting that the validated data be approved
 Routing key: create_instance
 Parameters: { 'files' : [list of s3 keys], 'request_id' : integer }
 Sent by: webapp
-Handled by: Kevin...
+Handled by: graph_builder
+
+Routing key: graph_done
+Parameters: { 'request_id' : integer, 'success' : boolean, 'key': s3 id, 'output' : text }
+Sent by: graph_builder
+Handled by: TBD
 
