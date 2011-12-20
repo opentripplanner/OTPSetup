@@ -1,0 +1,9 @@
+This process builds an OTP Graph.obj file. Requires a local install of the OTP graph builder. GTFS files and NED data are downloaded from S3.
+
+To run (from the main OTPSetup directory): 
+
+python -m otpsetup.graph_builder.main
+
+
+AMPQ input: validate_request
+AMPQ output: TODO
