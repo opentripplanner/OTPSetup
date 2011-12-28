@@ -7,6 +7,7 @@ from otpsetup.shortcuts import DjangoBrokerConnection
 from otpsetup.client.models import GtfsFile
 from otpsetup import settings
 from shutil import copyfileobj
+from datetime import datetime
 
 import os
 import subprocess
@@ -17,15 +18,19 @@ import builder
 exchange = Exchange("amq.direct", type="direct", durable=True)
 queue = Queue("create_instance", exchange=exchange, routing_key="create_instance")
 
-print "starting graph builder"
-
-def s3_bucket(cache = {}):
-    if not 'bucket' in cache:
-        
+def gtfs_bucket(cache = {}):
+    if not 'bucket' in cache:        
         connection = connect_s3(settings.AWS_ACCESS_KEY_ID, settings.AWS_SECRET_KEY)        
-        #import pdb;pdb.set_trace()
-        #print settings.S3_BUCKET
         bucket = connection.get_bucket(settings.S3_BUCKET)
+        cache['bucket'] = bucket
+    else:
+        return cache['bucket']
+    return bucket
+
+def graph_bucket(cache = {}):
+    if not 'bucket' in cache:        
+        connection = connect_s3(settings.AWS_ACCESS_KEY_ID, settings.AWS_SECRET_KEY)        
+        bucket = connection.get_bucket(settings.GRAPH_S3_BUCKET)
         cache['bucket'] = bucket
     else:
         return cache['bucket']
@@ -33,14 +38,9 @@ def s3_bucket(cache = {}):
 
 
 def handle_instance_request(conn, body, message):
-    #download the GTFS files and run them through the feed validator
-
-
-    print "build graph"
-    #import pdb;pdb.set_trace()
+    
     #create a working directory for this feed
     directory = tempfile.mkdtemp()
-    print "dir: "+directory
     #os.makedirs(directory)
     os.makedirs(os.path.join(directory, 'gtfs'))
 
@@ -49,7 +49,7 @@ def handle_instance_request(conn, body, message):
     for s3_id in files:
         print "id: " + s3_id
     
-        bucket = s3_bucket()
+        bucket = gtfs_bucket()
         key = Key(bucket)
         key.key = s3_id
 
@@ -58,14 +58,30 @@ def handle_instance_request(conn, body, message):
         
         key.get_contents_to_filename(path)        
    
-    builder.build_graph(directory)
+    gbresults = builder.build_graph(directory)
            
-    #os.rmdir(directory)
+    if gbresults['success']:
+        print 'writing to s3..'
+        
+        bucket = graph_bucket()
+        key = Key(bucket)
+        key.key = "uploads/%s/Graph_%s.obj" % (body['request_id'], datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S"))
+        key.set_contents_from_filename(os.path.join(directory,'Graph.obj'))
+        print 'written'
+        
+        gbresults['key'] = key.key
+        
     
-    #TODO: produce AMQP output 
-    #publisher = conn.Producer(routing_key="validation_done", exchange=exchange)
-    #publisher.publish({'request_id' : body['request_id'], 'output' : out})
-    #message.ack()
+    gbresults['request_id'] = body['request_id']
+    
+    publisher = conn.Producer(routing_key="graph_done", exchange=exchange)
+    publisher.publish(gbresults)
+    
+    print 'published graph_done'
+    
+    message.ack()
+
+    #os.rmdir(directory)
 
 with DjangoBrokerConnection() as conn:
 

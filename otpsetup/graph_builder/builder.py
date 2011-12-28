@@ -1,18 +1,15 @@
 import os
-from subprocess import call
+import subprocess
 from otpsetup import settings
 
-#TODO: move these to settings.py?
-templatedir = '/home/demory/otp/hd/templates'
-osmosisdir = '/home/demory/osm/osmosis'
-osmtoolsdir = '/home/demory/otp/hd/osmtools'
-otpgbdir = '/home/demory/otp/src1206/OpenTripPlanner'
-pbffile = '/home/demory/osm/data/us-east.pbf'
-usened = True;
+templatedir = os.path.join(settings.GRAPH_BUILDER_RESOURCE_DIR, 'templates')
+osmosisdir = os.path.join(settings.GRAPH_BUILDER_RESOURCE_DIR, 'osmosis')
+osmtoolsdir = os.path.join(settings.GRAPH_BUILDER_RESOURCE_DIR, 'osmtools')
+graphannodir = os.path.join(settings.GRAPH_BUILDER_RESOURCE_DIR, 'graphanno')
+otpgbdir = os.path.join(settings.GRAPH_BUILDER_RESOURCE_DIR, 'otpgb')
 
 def build_graph(workingdir): 
 
-    print "wd: "+workingdir
     # copy stop files to single directory
 
     stopsdir = os.path.join(workingdir, "stops")
@@ -40,13 +37,13 @@ def build_graph(workingdir):
     # run osm extract
 
     extractfile = workingdir+'/extract.osm'
-    cmd = os.path.join(osmosisdir,'bin/osmosis')+' --rb '+pbffile+' --bounding-polygon file='+polyfile+' --wx '+extractfile
+    cmd = os.path.join(osmosisdir,'bin/osmosis')+' --rb '+settings.PLANET_OSM_PATH+' --bounding-polygon file='+polyfile+' --wx '+extractfile
     print cmd
     os.system(cmd)
 
 
     # generate graph-builder config file
-    if usened:
+    if settings.NED_ENABLED:
         templatefile = open(os.path.join(templatedir, 'gb_ned.xml'), 'r')
         nedcachedir = os.path.join(workingdir, 'nedcache')
         if not os.path.exists(nedcachedir): os.makedirs(nedcachedir)    
@@ -62,19 +59,38 @@ def build_graph(workingdir):
         gtfslist += '                            <property name="path" value="'+os.path.join(workingdir, 'gtfs', item)+'" />\n'
         gtfslist += '                        </bean>\n'
 
-    if usened:
+    if settings.NED_ENABLED:
         gbxml = gbxml.format(graphpath=workingdir, gtfslist=gtfslist, osmpath=extractfile, nedcachepath=nedcachedir, awsaccesskey=settings.AWS_ACCESS_KEY_ID, awssecretkey=settings.AWS_SECRET_KEY)
     else:
         gbxml = gbxml.format(graphpath=workingdir, gtfslist=gtfslist, osmpath=extractfile)
 
-    gbfile = open(os.path.join(workingdir, 'gb.xml'), 'w')
+    gbfilepath = os.path.join(workingdir, 'gb.xml')
+    gbfile = open(gbfilepath, 'w')
     gbfile.write(gbxml)
     gbfile.close()
 
 
     # run graph builder
 
-    cmd = 'java -Xms2G -Xmx2G -jar '+os.path.join(otpgbdir, 'opentripplanner-graph-builder', 'target', 'graph-builder.jar')+' '+os.path.join(workingdir,'gb.xml')
-    #print cmd
-    os.system(cmd)
+    print 'running OTP graph builder'
+    otpjarpath = os.path.join(otpgbdir, 'graph-builder.jar')
+    result = subprocess.Popen(["java", "-Xms2G", "-Xmx2G", "-jar", otpjarpath, gbfilepath], stdout=subprocess.PIPE)
+    
+    gb_stdout = result.stdout.read()
+    graphpath = os.path.join(workingdir, 'Graph.obj')
+    graphsuccess = os.path.exists(graphpath)
+    
+    results = {}
+    
+    results['success'] = graphsuccess
+    if graphsuccess:
+        # if successful, read graph annotations as output
+        annoresult = subprocess.Popen(["java", "-Xms2G", "-Xmx2G", "-jar", os.path.join(graphannodir, 'graphanno.jar'), graphpath], stdout=subprocess.PIPE)
+        results['output'] = annoresult.stdout.read()        
+    else:
+        # if failure, store graphbuilder stdout as output
+        results['output'] = gb_stdout
+        
+    return results
+    
 
