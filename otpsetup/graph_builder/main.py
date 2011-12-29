@@ -10,11 +10,9 @@ from shutil import copyfileobj
 from datetime import datetime
 
 import os
-import subprocess
-import tempfile
 
 import builder
-
+ 
 exchange = Exchange("amq.direct", type="direct", durable=True)
 queue = Queue("create_instance", exchange=exchange, routing_key="create_instance")
 
@@ -40,8 +38,10 @@ def graph_bucket(cache = {}):
 def handle_instance_request(conn, body, message):
     
     #create a working directory for this feed
-    directory = tempfile.mkdtemp()
-    #os.makedirs(directory)
+    now = datetime.now()
+    directory = "/mnt/req%s_%s" % (body['request_id'], now.strftime("%F-%T"))
+    os.makedirs(directory)
+
     os.makedirs(os.path.join(directory, 'gtfs'))
 
     files = body['files']
@@ -80,12 +80,17 @@ def handle_instance_request(conn, body, message):
     print 'published graph_done'
     
     message.ack()
-
+    
     #os.rmdir(directory)
 
 with DjangoBrokerConnection() as conn:
 
     with conn.Consumer(queue, callbacks=[lambda body, message: handle_instance_request(conn, body, message)]) as consumer:
         # Process messages and handle events on all channels
-        while True:
-            conn.drain_events()
+        try:
+            while True:
+                conn.drain_events(timeout=900)
+        except:
+            print "exiting main loop"
+            
+#os.system("shutdown")
