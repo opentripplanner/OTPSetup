@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-from boto import connect_s3
+from boto import connect_s3, connect_ec2
 from boto.s3.key import Key
 from kombu import Exchange, Queue
 from otpsetup.shortcuts import DjangoBrokerConnection
@@ -10,6 +10,7 @@ from shutil import copyfileobj
 from datetime import datetime
 
 import os
+import socket
 
 import builder
  
@@ -93,4 +94,18 @@ with DjangoBrokerConnection() as conn:
         except:
             print "exiting main loop"
             
-#os.system("shutdown")
+ec2_conn = connect_ec2(settings.AWS_ACCESS_KEY_ID, settings.AWS_SECRET_KEY)
+
+hostname = socket.gethostname()
+reservations = ec2_conn.get_all_instances()
+running_instances = []
+found_instance = False
+for reservation in reservations:
+    for instance in reservation.instances:
+        private_dns = instance.private_dns_name.split('.')[0]
+        if private_dns == hostname:
+            instance.stop()
+            found_instance = True
+
+if not found_instance:
+    print "warning: did not find instance matching host machine"
