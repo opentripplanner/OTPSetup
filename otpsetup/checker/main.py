@@ -58,4 +58,23 @@ with DjangoBrokerConnection() as conn:
     with conn.Consumer(queue, callbacks=[lambda body, message: validate(conn, body, message)]) as consumer:
         # Process messages and handle events on all channels
         while True:
-            conn.drain_events()
+            conn.drain_events(timeout=900)
+        except:
+            print "exiting main loop"
+
+# stop this instance            
+ec2_conn = connect_ec2(settings.AWS_ACCESS_KEY_ID, settings.AWS_SECRET_KEY)
+
+hostname = socket.gethostname()
+reservations = ec2_conn.get_all_instances()
+running_instances = []
+found_instance = False
+for reservation in reservations:
+    for instance in reservation.instances:
+        private_dns = instance.private_dns_name.split('.')[0]
+        if private_dns == hostname:
+            instance.stop()
+            found_instance = True
+
+if not found_instance:
+    print "warning: did not find instance matching host machine"            
