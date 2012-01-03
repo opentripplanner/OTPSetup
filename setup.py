@@ -7,7 +7,7 @@ setup(
       "Django==1.3.1",
 #      "django-registration",  need to pull version 0.8 which is not currently available
       "kombu",
-      "boto",
+      "boto==2.1.1",
       "transitfeed"
       ],
 )
