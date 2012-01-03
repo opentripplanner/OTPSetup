@@ -13,7 +13,7 @@ queue = Queue("validation_done", exchange=exchange, routing_key="validation_done
 
 def handle(conn, body, message):
     request_id = body['request_id']
-    output = request['output']
+    output = body['output']
 
     for gtfs_result in output:
         gtfs_file = GtfsFile.objects.get(s3_key=gtfs_result['key'])
