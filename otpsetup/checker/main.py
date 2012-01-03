@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-from boto import connect_s3
+from boto import connect_s3, connect_ec2
 from boto.s3.key import Key
 from kombu import Exchange, Queue
 from otpsetup.shortcuts import DjangoBrokerConnection
@@ -11,6 +11,7 @@ from shutil import copyfileobj
 import os
 import subprocess
 import tempfile
+import socket
 
 exchange = Exchange("amq.direct", type="direct", durable=True)
 queue = Queue("validate_request", exchange=exchange, routing_key="validate_request")
