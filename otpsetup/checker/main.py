@@ -57,8 +57,9 @@ with DjangoBrokerConnection() as conn:
 
     with conn.Consumer(queue, callbacks=[lambda body, message: validate(conn, body, message)]) as consumer:
         # Process messages and handle events on all channels
-        while True:
-            conn.drain_events(timeout=900)
+        try:
+            while True:
+                conn.drain_events(timeout=900)
         except:
             print "exiting main loop"
 
