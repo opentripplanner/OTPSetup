@@ -5,6 +5,7 @@ from boto.s3.key import Key
 from datetime import datetime
 from kombu import Exchange, Queue
 from otpsetup.shortcuts import DjangoBrokerConnection
+from otpsetup.shortcuts import check_for_running_instance
 from otpsetup.client.models import GtfsFile
 from otpsetup import settings
 from shutil import copyfileobj
@@ -76,6 +77,10 @@ def process_transload(conn, body, message):
         publisher = conn.Producer(routing_key="validate_request",
                                   exchange=exchange)
         publisher.publish({"files" : s3_keys, "request_id" : irequest.id})
+
+        # start validator instance, if needed
+        check_for_running_instance(settings.VALIDATOR_AMI_ID)
+
         irequest.state = "submitted"
         irequest.save()
 

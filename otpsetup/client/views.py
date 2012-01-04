@@ -12,6 +12,7 @@ from kombu import Exchange
 
 from otpsetup.shortcuts import render_to_response
 from otpsetup.shortcuts import DjangoBrokerConnection
+from otpsetup.shortcuts import check_for_running_instance
 
 import base64
 import hmac, sha
@@ -122,6 +123,10 @@ def finalize_request(request):
         publisher = conn.Producer(routing_key="validate_request",
                                   exchange=exchange)
         publisher.publish({"files" : s3_keys, "request_id" : irequest.id})
+        
+        # start validator instance, if needed
+        check_for_running_instance(settings.VALIDATOR_AMI_ID)
+        
     publisher.close()
 
     return render_to_response(request, 'request_submitted.html', locals())
