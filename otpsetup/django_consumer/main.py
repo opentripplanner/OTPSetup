@@ -24,16 +24,13 @@ def handle(conn, body, message):
     irequest.state = "submitted"
     irequest.save()
 
-    url = reverse("otpsetup.client.adminviews.index")
+    #url = reverse("otpsetup.client.adminviews.index")
 
     send_mail('OTP instance request pending', 
               """There is a new OTP instance request which has just completed 
 validation.  The request is from %s %s <%s>.  
-
-To approve it, go to %s
-
 """ % (irequest.user.first_name, irequest.user.last_name, 
-       irequest.user.email, url),
+       irequest.user.email),
               settings.DEFAULT_FROM_EMAIL,
               settings.ADMIN_EMAILS, fail_silently=False)
 
