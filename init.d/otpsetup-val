@@ -1,0 +1,25 @@
+#! /bin/sh
+# /etc/init.d/otpsetup-val
+#
+### BEGIN INIT INFO
+# Provides:          otpsetup-val
+# Required-Start:    $remote_fs $syslog
+# Required-Stop:     $remote_fs $syslog
+# Default-Start:
+# Default-Stop:
+# Short-Description: Start otpsetup-val
+# Description:       Start the OTPSetup checker/validator module
+### END INIT INFO
+
+case "$1" in
+    start)
+        echo -n "starting otpsetup-val"
+        cd /var/otp/OTPSetup
+        export DJANGO_SETTINGS_MODULE=otpsetup.settings
+        python -m otpsetup.checker.main &
+
+        exit 0
+        ;;
+esac
+
+

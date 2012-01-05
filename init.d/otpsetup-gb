@@ -1,0 +1,24 @@
+#! /bin/sh
+# /etc/init.d/otpsetup-gb
+#
+### BEGIN INIT INFO
+# Provides:          otpsetup-gb
+# Required-Start:    $remote_fs $syslog
+# Required-Stop:     $remote_fs $syslog
+# Default-Start:
+# Default-Stop:
+# Short-Description: Start otpsetup-gb
+# Description:       Start the OTPSetup graph builder module
+### END INIT INFO
+
+case "$1" in
+    start)
+        echo -n "starting otpsetup-gb"
+        cd /var/otp/OTPSetup
+        export DJANGO_SETTINGS_MODULE=otpsetup.settings
+        python -m otpsetup.graph_builder.main &
+
+        exit 0
+        ;;
+esac
+

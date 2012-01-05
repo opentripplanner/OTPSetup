@@ -1,0 +1,10 @@
+These scripts automate the startup of the the checker and graph-builder modules on machine startup by launching them as init.d services.
+
+e.g, for the validator instance:
+ - copy the otpsetup-val file to the /etc/init.d/ directory
+ - make it executable: 'chmod 755 otpsetup-val'
+ - run 'update-rc.d otpsetup-val defaults'
+ 
+The script should run at next bootup. To confirm success, list processes using 'ps aux' and confirm that "python -m otpsetup.checker.main" is running.
+ 
+Follow a similar process for the otpsetup-gb script on the graph-builder instance.
