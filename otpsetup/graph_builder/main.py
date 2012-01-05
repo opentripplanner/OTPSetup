@@ -93,6 +93,8 @@ with DjangoBrokerConnection() as conn:
                 conn.drain_events(timeout=900)
         except:
             print "exiting main loop"
+
+    conn.close()
             
 ec2_conn = connect_ec2(settings.AWS_ACCESS_KEY_ID, settings.AWS_SECRET_KEY)
 
