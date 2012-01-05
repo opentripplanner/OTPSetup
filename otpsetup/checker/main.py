@@ -7,18 +7,21 @@ from otpsetup.shortcuts import DjangoBrokerConnection
 from otpsetup.client.models import GtfsFile
 from otpsetup import settings
 from shutil import copyfileobj
+from datetime import datetime
 
 import os
 import subprocess
 import tempfile
 import socket
 
+import sys, traceback
+
 exchange = Exchange("amq.direct", type="direct", durable=True)
 queue = Queue("validate_request", exchange=exchange, routing_key="validate_request")
 
 def s3_bucket(cache = {}):
     if not 'bucket' in cache:
-        
+
         connection = connect_s3(settings.AWS_ACCESS_KEY_ID, settings.AWS_SECRET_KEY)
         bucket = connection.get_bucket(settings.S3_BUCKET)
         cache['bucket'] = bucket
@@ -29,40 +32,51 @@ def s3_bucket(cache = {}):
 
 def validate(conn, body, message):
     #download the GTFS files and run them through the feed validator
+    try:
+        #create a working directory for this feed
+        #directory = tempfile.mkdtemp()
+        now = datetime.now()
+        directory = "/mnt/req%s_%s" % (body['request_id'], now.strftime("%F-%T"))
+        os.makedirs(directory)
+        files = body['files']
+        out = []
+        for s3_id in files:
 
-    #create a working directory for this feed
-    directory = tempfile.mkdtemp()
+            bucket = s3_bucket()
+            key = Key(bucket)
+            key.key = s3_id
 
-    files = body['files']
-    out = []
-    for s3_id in files:
+            basename = os.path.basename(s3_id)
+            path = os.path.join(directory, basename)
 
-        bucket = s3_bucket()
-        key = Key(bucket)
-        key.key = s3_id
+            key.get_contents_to_filename(path)
+            result = subprocess.Popen(["/usr/local/bin/feedvalidator.py", "-n", "--output=CONSOLE", "-l", "10", path], stdout=subprocess.PIPE)
+            out.append({"key" : s3_id, "errors" : result.stdout.read()})
+            os.remove(path)
 
-        basename = os.path.basename(s3_id)
-        path = os.path.join(directory, basename)
-        
-        key.get_contents_to_filename(path)
-        result = subprocess.Popen(["feedvalidator.py", "-n", "--output=CONSOLE", "-l", "10", path], stdout=subprocess.PIPE)
-        out.append({"key" : s3_id, "errors" : result.stdout.read()})
-        os.remove(path)
-    os.rmdir(directory)
-    publisher = conn.Producer(routing_key="validation_done",
-                              exchange=exchange)
-    publisher.publish({'request_id' : body['request_id'], 'output' : out})
-    message.ack()
+        os.rmdir(directory)
+        publisher = conn.Producer(routing_key="validation_done",
+                                  exchange=exchange)
+        publisher.publish({'request_id' : body['request_id'], 'output' : out})
+        message.ack()
+
+    except:
+        now = datetime.now()
+        errfile = "/var/otp/val_err_%s_%s" % (body['request_id'], now.strftime("%F-%T"))
+        traceback.print_exc(file=open(errfile,"a"))
 
 with DjangoBrokerConnection() as conn:
 
     with conn.Consumer(queue, callbacks=[lambda body, message: validate(conn, body, message)]) as consumer:
         # Process messages and handle events on all channels
+
+        print "starting loop"
         try:
             while True:
-                conn.drain_events(timeout=900)
+                conn.drain_events(timeout=300)
         except:
-            print "exiting main loop"
+            print "exited loop"
+    conn.close()
 
 # stop this instance            
 ec2_conn = connect_ec2(settings.AWS_ACCESS_KEY_ID, settings.AWS_SECRET_KEY)
@@ -76,7 +90,10 @@ for reservation in reservations:
         private_dns = instance.private_dns_name.split('.')[0]
         if private_dns == hostname:
             instance.stop()
+            print "stopping instance"
             found_instance = True
 
 if not found_instance:
-    print "warning: did not find instance matching host machine"            
+    print "warning: did not find instance matching host machine"
+
+
