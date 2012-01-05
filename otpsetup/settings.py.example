@@ -21,6 +21,16 @@ ADMINS = (
 
 MANAGERS = ADMINS
 
+# Graph builder settings
+GRAPH_BUILDER_RESOURCE_DIR = "/var/otp/resources/"
+PLANET_OSM_PATH = '/var/otp/osm/planet-latest.osm.pbf'
+NED_ENABLED = True
+
+# AMI ID's for automated startup of validator and graph-builder
+VALIDATOR_AMI_ID = "ami-dd24f0b4"
+GRAPH_BUILDER_AMI_ID = "ami-f9459190"
+
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.', # Add 'postgresql_psycopg2', 'postgresql', 'mysql', 'sqlite3' or 'oracle'.
