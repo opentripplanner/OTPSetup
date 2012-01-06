@@ -1,0 +1,24 @@
+#! /bin/sh
+# /etc/init.d/otpsetup-deploy
+#
+### BEGIN INIT INFO
+# Provides:          otpsetup-deploy
+# Required-Start:    $remote_fs $syslog
+# Required-Stop:     $remote_fs $syslog
+# Default-Start:
+# Default-Stop:
+# Short-Description: Start otpsetup-deploy
+# Description:       Start the OTPSetup deployment module
+### END INIT INFO
+
+case "$1" in
+    start)
+        cd /var/otp/OTPSetup
+        export DJANGO_SETTINGS_MODULE=otpsetup.settings
+        python -m otpsetup.deployer.main &
+
+        exit 0
+        ;;
+esac
+
+
