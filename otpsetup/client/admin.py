@@ -12,7 +12,7 @@ from otpsetup.client.lib.buttonable_model_admin import ButtonableModelAdmin
 from otpsetup.client.models import InstanceRequest, GtfsFile
 from otpsetup.shortcuts import render_to_response
 from otpsetup.shortcuts import DjangoBrokerConnection
-
+from otpsetup.shortcuts import check_for_running_instance
 
 def accept_instance_request(modeladmin, request, queryset):
     exchange = Exchange("amq.direct", type="direct", durable=True)
