@@ -62,6 +62,7 @@ def process_transload(conn, body, message):
     bucket = s3_bucket()
     key = s3_key(bucket, gtfs)
 
+    tmpfile.seek(0)
     key.set_contents_from_file(tmpfile)
 
     gtfs.s3_key = key.key
