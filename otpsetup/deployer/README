@@ -1,0 +1,3 @@
+deployer consumes ONE 'deploy_instance' message and deploys OTP on the local machine, downloading the graph object indicated in the message. If no message is found within a specified tiemout period, the local instance is stopped.
+
+this module is intended to be run at startup; a sample init.d boot script is included in the OTPSetup/init.d directory
