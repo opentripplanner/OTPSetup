@@ -33,5 +33,15 @@ Handled by: graph_builder
 Routing key: graph_done
 Parameters: { 'request_id' : integer, 'success' : boolean, 'key': s3 id, 'output' : text }
 Sent by: graph_builder
-Handled by: TBD
+Handled by: graph_consumer
 
+graph_consumer does one of two things: if graph building was successful, it spins 
+up a new deployment instance and dispatches a deploy_instance message. If graph
+building failed, graph_consumer sends an email to the admins alerting of the failure
+
+Routing key: deploy_instance
+Parameters: { 'request_id' : integer, 'success' : boolean, 'key': s3 id, 'output' : text }
+Sent by: graph_consumer
+Handled by: deployer
+
+deployer emails the admins upon successful deployment
