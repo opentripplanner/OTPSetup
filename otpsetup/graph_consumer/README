@@ -1,0 +1,5 @@
+graph_consumer consumes 'graph_done' messages and does one of two things:
+
+- if graph building was successful, it spins up a new deployment instance and dispatches a 'deploy_instance' message.
+
+- if graph building failed, it sends an email to the admins alerting of the failure
