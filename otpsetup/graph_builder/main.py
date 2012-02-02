@@ -37,53 +37,59 @@ def graph_bucket(cache = {}):
 
 
 def handle_instance_request(conn, body, message):
-    
-    #create a working directory for this feed
-    now = datetime.now()
-    directory = "/mnt/req%s_%s" % (body['request_id'], now.strftime("%F-%T"))
-    os.makedirs(directory)
 
-    os.makedirs(os.path.join(directory, 'gtfs'))
+    try:
+        #create a working directory for this feed
+        now = datetime.now()
+        directory = "/mnt/req%s_%s" % (body['request_id'], now.strftime("%F-%T"))
+        os.makedirs(directory)
 
-    files = body['files']
-    out = []
-    for s3_id in files:
-        print "id: " + s3_id
-    
-        bucket = gtfs_bucket()
-        key = Key(bucket)
-        key.key = s3_id
+        os.makedirs(os.path.join(directory, 'gtfs'))
 
-        basename = os.path.basename(s3_id)
-        path = os.path.join(directory, 'gtfs', basename)
+        files = body['files']
+        out = []
+        for s3_id in files:
+            print "id: " + s3_id
         
-        key.get_contents_to_filename(path)        
-   
-    gbresults = builder.build_graph(directory)
-           
-    if gbresults['success']:
-        print 'writing to s3..'
-        
-        bucket = graph_bucket()
-        key = Key(bucket)
-        key.key = "uploads/%s/Graph_%s.obj" % (body['request_id'], datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S"))
-        key.set_contents_from_filename(os.path.join(directory,'Graph.obj'))
-        print 'written'
-        
-        gbresults['key'] = key.key
-        
-    
-    gbresults['request_id'] = body['request_id']
-    
-    publisher = conn.Producer(routing_key="graph_done", exchange=exchange)
-    publisher.publish(gbresults)
-    
-    print 'published graph_done'
-    
-    message.ack()
-    
-    #os.rmdir(directory)
+            bucket = gtfs_bucket()
+            key = Key(bucket)
+            key.key = s3_id
 
+            basename = os.path.basename(s3_id)
+            path = os.path.join(directory, 'gtfs', basename)
+            
+            key.get_contents_to_filename(path)        
+       
+        gbresults = builder.build_graph(directory)
+               
+        if gbresults['success']:
+            print 'writing to s3..'
+            
+            bucket = graph_bucket()
+            key = Key(bucket)
+            key.key = "uploads/%s/Graph_%s.obj" % (body['request_id'], datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S"))
+            key.set_contents_from_filename(os.path.join(directory,'Graph.obj'))
+            print 'written'
+            
+            gbresults['key'] = key.key
+            
+        
+        gbresults['request_id'] = body['request_id']
+        
+        publisher = conn.Producer(routing_key="graph_done", exchange=exchange)
+        publisher.publish(gbresults)
+        
+        print 'published graph_done'
+        
+        message.ack()
+        
+        #os.rmdir(directory)
+
+    except:
+        now = datetime.now()
+        errfile = "/var/otp/val_err_%s_%s" % (body['request_id'], now.strftime("%F-%T"))
+        traceback.print_exc(file=open(errfile,"a"))
+        
 with DjangoBrokerConnection() as conn:
 
     with conn.Consumer(queue, callbacks=[lambda body, message: handle_instance_request(conn, body, message)]) as consumer:
@@ -106,7 +112,7 @@ for reservation in reservations:
     for instance in reservation.instances:
         private_dns = instance.private_dns_name.split('.')[0]
         if private_dns == hostname:
-            instance.stop()
+            #instance.stop()
             found_instance = True
 
 if not found_instance:
