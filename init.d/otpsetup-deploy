@@ -13,6 +13,9 @@
 
 case "$1" in
     start)
+        cd /var/otp/OTPSetup/otpsetup/init_resources
+        python init_settings.py
+        python init_wars.py
         cd /var/otp/OTPSetup
         export DJANGO_SETTINGS_MODULE=otpsetup.settings
         python -m otpsetup.deployer.main &
@@ -20,5 +23,4 @@ case "$1" in
         exit 0
         ;;
 esac
-
 
