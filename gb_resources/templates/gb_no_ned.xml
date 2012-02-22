@@ -35,6 +35,7 @@
 
     <bean id="transitStreetLink" class="org.opentripplanner.graph_builder.impl.TransitToStreetNetworkGraphBuilderImpl" />
     <bean id="optimizeTransit" class="org.opentripplanner.graph_builder.impl.OptimizeTransitGraphBuilderImpl" />
+    <bean id="checkGeometry" class="org.opentripplanner.graph_builder.impl.CheckGeometryGraphBuilderImpl" />
 
     <bean id="graphBuilderTask" class="org.opentripplanner.graph_builder.GraphBuilderTask">
         <property name="graphBundle" ref="graphBundle" />
@@ -44,6 +45,7 @@
                 <ref bean="gtfsBuilder" />
                 <ref bean="transitStreetLink" />
                 <ref bean="optimizeTransit" />
+                <ref bean="checkGeometry" />
             </list>
         </property>
     </bean>
