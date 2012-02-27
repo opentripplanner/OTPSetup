@@ -2,7 +2,6 @@
 
 from boto import connect_s3
 from boto.s3.key import Key
-from datetime import datetime
 from kombu import Exchange, Queue
 from otpsetup.shortcuts import DjangoBrokerConnection
 from otpsetup.shortcuts import check_for_running_instance
@@ -11,6 +10,8 @@ from otpsetup import settings
 from shutil import copyfileobj
 from tempfile import TemporaryFile
 from urllib2 import urlopen
+
+import uuid
 
 exchange = Exchange("amq.direct", type="direct", durable=True)
 queue = Queue("transload", exchange=exchange, routing_key="transload")
@@ -30,7 +31,7 @@ def s3_key(bucket, gtfsfile):
     irequest = gtfsfile.instance_request
     filename = gtfsfile.transload_url.split("/")[-1]
     filename = ".".join(filename.split(".")[:-1])
-    k.key = "uploads/%s/%s_%s.zip" % (irequest.id, datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S"), filename)
+    k.key = "uploads/%s/%s_%s.zip" % (irequest.id, str(uuid.uuid4()), filename)
     return k
 
 def process_transload(conn, body, message):
