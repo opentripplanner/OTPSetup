@@ -16,6 +16,7 @@ from otpsetup.shortcuts import check_for_running_instance
 
 import base64
 import hmac, sha
+import uuid
 
 def index(request):   
     return render_to_response(request, 'index.html')
@@ -43,7 +44,7 @@ def upload(request):
 
     uploaded = irequest.gtfsfile_set.count()
 
-    base_filename = "uploads/%s/%s_" % (request_id, datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S"))
+    base_filename = "uploads/%s/%s_" % (request_id, str(uuid.uuid4())))
     upload_filename = base_filename + "${filename}"
     aws_access_key_id = settings.AWS_ACCESS_KEY_ID
 
