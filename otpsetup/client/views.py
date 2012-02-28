@@ -44,7 +44,7 @@ def upload(request):
 
     uploaded = irequest.gtfsfile_set.count()
 
-    base_filename = "uploads/%s/%s_" % (request_id, str(uuid.uuid4())))
+    base_filename = "uploads/%s/%s_" % (request_id, str(uuid.uuid4()))
     upload_filename = base_filename + "${filename}"
     aws_access_key_id = settings.AWS_ACCESS_KEY_ID
 
