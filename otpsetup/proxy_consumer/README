@@ -1,0 +1,1 @@
+This module runs on the proxy server instance and listens for 'deployment_ready' messages from the controller, adding any new deployments to the nginx config and notifying the admins of the launch.
