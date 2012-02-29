@@ -1,24 +1,23 @@
 #! /bin/sh
-# /etc/init.d/otpsetup-val
+# /etc/init.d/otpsetup-proxy
 #
 ### BEGIN INIT INFO
-# Provides:          otpsetup-val
+# Provides:          otpsetup-proxy
 # Required-Start:    $remote_fs $syslog
 # Required-Stop:     $remote_fs $syslog
 # Default-Start:
 # Default-Stop:
-# Short-Description: Start otpsetup-val
-# Description:       Start the OTPSetup checker/validator module
+# Short-Description: Start otpsetup-proxy
+# Description:       Start the OTPSetup proxy server module
 ### END INIT INFO
 
 case "$1" in
     start)
-        route add default gw 10.0.0.12 eth0
         cd /var/otp/OTPSetup/otpsetup/init_resources
         python init_settings.py
         cd /var/otp/OTPSetup
         export DJANGO_SETTINGS_MODULE=otpsetup.settings
-        python -m otpsetup.checker.main &
+        python -m otpsetup.proxy_consumer.main &
 
         exit 0
         ;;

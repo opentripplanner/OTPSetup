@@ -13,7 +13,11 @@
 
 case "$1" in
     start)
-        echo -n "starting otpsetup-gb"
+        route add default gw 10.0.0.12 eth0
+        mount /dev/xvdf /var/otp/osm/
+        cd /var/otp/OTPSetup/otpsetup/init_resources
+        python init_settings.py
+        python init_otpgb.py
         cd /var/otp/OTPSetup
         export DJANGO_SETTINGS_MODULE=otpsetup.settings
         python -m otpsetup.graph_builder.main &
