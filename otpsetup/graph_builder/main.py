@@ -105,15 +105,18 @@ with DjangoBrokerConnection() as conn:
 ec2_conn = connect_ec2(settings.AWS_ACCESS_KEY_ID, settings.AWS_SECRET_KEY)
 
 hostname = socket.gethostname()
+hostname = hostname[3:].replace("-", ".")
 reservations = ec2_conn.get_all_instances()
 running_instances = []
 found_instance = False
 for reservation in reservations:
     for instance in reservation.instances:
-        private_dns = instance.private_dns_name.split('.')[0]
+        private_dns = instance.private_ip_address
         if private_dns == hostname:
-            #instance.stop()
+            instance.stop()
             found_instance = True
 
 if not found_instance:
     print "warning: did not find instance matching host machine"
+
+
