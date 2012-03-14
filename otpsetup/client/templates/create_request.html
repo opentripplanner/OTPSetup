@@ -10,6 +10,14 @@ GTFS.<br/><br/>
   Comments:<br/>
   <textarea name="comments" rows=6 cols=60></textarea><br/>
 
+  Fare model:<br/>
+  <select name="fare_factory">
+    <option value="org.opentripplanner.routing.impl.DefaultFareServiceFactory">Default</option>
+    <option value="org.opentripplanner.routing.services.FareService.SFBayFareServiceFactory">SF Bay</option>
+    <option value="org.opentripplanner.routing.impl.NycFareServiceFactory">NYC</option>
+  </select><br/>
+
+
   <input type="submit" value="Upload GTFS"><br/>
 
 </form>

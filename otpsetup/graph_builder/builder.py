@@ -39,7 +39,7 @@ def ned_available(boundsfilename):
     
     return all_exist
 
-def build_graph(workingdir): 
+def build_graph(workingdir, fare_factory):
 
     # copy stop files to single directory
 
@@ -92,7 +92,7 @@ def build_graph(workingdir):
         gtfslist += '                        </bean>\n'
 
     if use_ned:
-        gbxml = gbxml.format(graphpath=workingdir, gtfslist=gtfslist, osmpath=extractfile, nedcachepath=nedcachedir, awsaccesskey=settings.AWS_ACCESS_KEY_ID, awssecretkey=settings.AWS_SECRET_KEY)
+        gbxml = gbxml.format(graphpath=workingdir, gtfslist=gtfslist, osmpath=extractfile, nedcachepath=nedcachedir, awsaccesskey=settings.AWS_ACCESS_KEY_ID, awssecretkey=settings.AWS_SECRET_KEY, fare_factory=fare_factory)
     else:
         gbxml = gbxml.format(graphpath=workingdir, gtfslist=gtfslist, osmpath=extractfile)
 

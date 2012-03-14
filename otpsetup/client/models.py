@@ -1,6 +1,6 @@
 from datetime import datetime
 from django.db import models
-from django.forms import ModelForm
+from django.forms import ModelForm, RegexField
 from django.contrib.auth.models import User
 
 STATES = (("running", "Running"),
@@ -18,6 +18,7 @@ class InstanceRequest(models.Model):
     user = models.ForeignKey(User)
     agency = models.CharField(max_length=40, blank=True)
     comments = models.TextField(max_length=20000, null=True, blank=True)
+    fare_factory = models.TextField(max_length=200)
     ip = models.CharField(max_length=15)
 
 class GtfsFile(models.Model):
@@ -27,9 +28,12 @@ class GtfsFile(models.Model):
     validation_output = models.TextField(max_length=20000, null=True, blank=True)
 
 class InstanceRequestForm(ModelForm):
+    fare_factory = RegexField(label="Fare model", max_length=200, 
+                             regex=r'^[\w.]+')
+
     class Meta:
         model = InstanceRequest
-        fields = ('comments', 'agency')
+        fields = ('comments', 'agency', 'fare_factory')
 
 MACHINE_TYPES=[('graph builder', 'Graph Builder', ), ('webapp', 'Webapp')]
 

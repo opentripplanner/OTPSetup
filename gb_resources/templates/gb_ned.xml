@@ -18,6 +18,9 @@
                 </property>
             </bean>
         </property>
+        <property name="fareServiceFactory">
+          <bean class="{fare_factory}" />
+        </property>
     </bean>
 
     <bean id="osmBuilder" class="org.opentripplanner.graph_builder.impl.osm.OpenStreetMapGraphBuilderImpl">

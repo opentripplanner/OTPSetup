@@ -60,7 +60,9 @@ def handle_instance_request(conn, body, message):
             
             key.get_contents_to_filename(path)        
        
-        gbresults = builder.build_graph(directory)
+        fare_factory = body['fare_factory']
+
+        gbresults = builder.build_graph(directory, fare_factory)
                
         if gbresults['success']:
             print 'writing to s3..'
