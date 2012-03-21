@@ -7,9 +7,10 @@ from otpsetup.client.models import InstanceRequest, GtfsFile
 from otpsetup import settings
 from django.core.urlresolvers import reverse
 
+print "Starting Django Consumer"
+
 exchange = Exchange("amq.direct", type="direct", durable=True)
 queue = Queue("validation_done", exchange=exchange, routing_key="validation_done")
-
 
 def handle(conn, body, message):
     request_id = body['request_id']

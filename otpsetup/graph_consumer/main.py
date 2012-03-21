@@ -7,6 +7,8 @@ from otpsetup.shortcuts import DjangoBrokerConnection
 from otpsetup.client.models import InstanceRequest, GtfsFile
 from otpsetup import settings
 
+print "Starting Graph Consumer"
+
 exchange = Exchange("amq.direct", type="direct", durable=True)
 queue = Queue("graph_done", exchange=exchange, routing_key="graph_done")
 

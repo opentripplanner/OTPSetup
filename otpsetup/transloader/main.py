@@ -13,6 +13,8 @@ from urllib2 import urlopen
 
 import uuid
 
+print "Starting Transloader"
+
 exchange = Exchange("amq.direct", type="direct", durable=True)
 queue = Queue("transload", exchange=exchange, routing_key="transload")
 
