@@ -1,20 +1,51 @@
+{% extends "base.html" %}
+
+{% block title %}Transload a GTFS Feed{% endblock %}
+
+{% block content %}
 {% if uploaded %}
-{{ uploaded }} files uploaded so far.<br/>
+
+<div class='infobox'>
+
+<div style='float: left; width: 450px;'>
+<div style='font-size:14px; margin-bottom: 6px;'>You have submitted <b>{{ uploaded }}</b> GTFS feed(s) so far.</div>
+<i>If you have no more feeds to submit, click the "Finished" button to the right. Otherwise, use the form below to submit additional feeds.</i>
+</div>
+
+<div style='margin-left: 470px; height:40px; text-align:right; padding-top: 15px;'>
 <form action="/finalize_request" method="POST">
 {% csrf_token %}
   <input type="hidden" name="request_id" value="{{request_id}}" />
-  <input type="submit" value="Done entering GTFS">
+  <input type="submit" value="Finished Submitting GTFS">
 </form>
+</div>
+<div clear='both'></div>
+</div>
 {% endif %}
 
-<a href="/upload?request_id={{request_id}}">Or upload</a>
 
 <form action="/done_transload" method="post" enctype="multipart/form-data">
 {% csrf_token %}
   <input type="hidden" name="request_id" value="{{request_id}}" />
 
-  Gtfs file url:<br/>
-  <input type="text" name="transload_url" size="80" /><br/>
-  <br /> 
-  <input type="submit" value="Upload GTFS"> 
+
+  <div style='text-align: center; margin-bottom: 20px;'>
+  <span style='font-size:16px; font-weight: bold;'>URL of online GTFS feed to load:</span><br />
+  <input type="text" name="transload_url" size="60" />
+  <p><input type="submit" value="Load GTFS"><br/>
+  <p><i>If your GTFS feed is on your local computer, you may <a href="/upload?request_id={{request_id}}">upload the file</a> instead.</i>
+  </div>
+
+  <b>Notes:</b>
+  <ul>
+  <li>The format of the linked file should be a ZIP archive that contains the individual GTFS files (agency.txt, routes.txt, etc.) in the
+top-level directory of the archive.</li>
+
+  <li>You will have a chance to upload/transload additional GTFS feeds once this one
+  is complete.</li>
+  </ul>
+
+
 </form> 
+{% endblock %}
+

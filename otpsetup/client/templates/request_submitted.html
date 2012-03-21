@@ -1,3 +1,8 @@
+{% extends "base.html" %}
+
+{% block title %}Request Submitted{% endblock %}
+
+{% block content %}
 Request submitted.  Here's what will happen next:
 
 <ol>
@@ -5,3 +10,5 @@ Request submitted.  Here's what will happen next:
 <li>If there are any errors, we'll let you know.  Otherwise, we'll approve your instance request</li>
 <li>We'll automatically set up an OTP instance for you, and send you a link when it's running</li>
 </ol>
+{% endblock %}
+

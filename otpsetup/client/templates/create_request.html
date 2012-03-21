@@ -1,3 +1,8 @@
+{% extends "base.html" %}
+
+{% block title %}Create a Deployment Request{% endblock %}
+
+{% block content %}
 <form action="/create_request" method="POST">
 {% csrf_token %}
 
@@ -17,7 +22,7 @@ GTFS.<br/><br/>
     <option value="org.opentripplanner.routing.impl.NycFareServiceFactory">NYC</option>
   </select><br/>
 
-
   <input type="submit" value="Upload GTFS"><br/>
 
 </form>
+{% endblock %}

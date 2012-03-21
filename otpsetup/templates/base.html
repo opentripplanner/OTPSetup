@@ -1,14 +1,30 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <link rel="stylesheet" href="style.css" />
-    <title>{% block title %}OTP Setup{% endblock %}</title>
+    <link rel="stylesheet" href="/static/otpdeployer.css" />
+    <title>OTP Deployer</title>
 </head>
 
 <body>
 
-    <div id="content">
-        {% block content %}{% endblock %}
-    </div>
+<div id="header">OTP-Deployer</div>
+
+<div id="subheader">{% block title %}{% endblock %}</div>
+
+<div id="content">
+
+<div style="font-size:10px; text-align: right; margin-bottom: 12px;">
+{% if user.is_authenticated %} 
+    Logged in as <b>{{ user.username }}</b> | <a href="/accounts/logout">Log out</a> 
+{% else %} 
+    Not currently logged in | <a href="/accounts/login">Log in</a> 
+{% endif %} 
+</div>
+{% block content %}{% endblock %}
+</div>
+
+<div id="logorow"><a href="http://transportation.openplans.org/"><img src="/static/transport.png" border=0/></a></div>
+
 </body>
 </html>
+

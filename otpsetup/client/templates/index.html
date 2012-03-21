@@ -1,11 +1,23 @@
-<p>
-Want to try out OpenTripPlanner the quick and easy way?  Just send us
+{% extends "base.html" %}
+
+{% block title %}Welcome{% endblock %}
+
+{% block content %}
+<div style='float: left;'>
+<img src="https://github.com/openplans/OpenTripPlanner/wiki/Demos/screenshot_small.png">
+</div>
+
+<div style="margin: 20px 0px 0px 340px;">
+Want to try out <a href="http://www.opentripplanner.org">OpenTripPlanner</a> the quick and easy way?  Just send us
 your GTFS and we'll set up a demo server for you.  We'll email you as
 soon as it's ready, and you can try it out for a few days -- at no
 cost!
 
-If you want to keep going after that, you can do so on a monthly
+<p>If you want to keep going after that, you can do so on a monthly
 basis.
 
-To get started, <a href="/create_request">create an instance request</a>.
-</p>
+<p>To get started, <a href="/create_request">create an instance request</a>.
+</div>
+<div style="clear:both"></div>
+{% endblock %}
+

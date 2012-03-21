@@ -1,0 +1,65 @@
+body {
+    margin: 0;
+    padding: 0;
+    font-size: 12px;
+    font-family: Lucida,Verdana,Arial,sans-serif;
+    background-image:url('/static/bg.gif');
+}
+
+#header {
+    margin-top: 50px;
+    margin-left: auto;
+    margin-right: auto;
+    padding: 6px 24px; 
+    color: #eee;
+    background: #006;
+    background-image:url('/static/opentripplanner-logo.png');
+    background-repeat: no-repeat;
+    background-position: 20px 8px;
+    width: 728px;
+    height: 52px;
+    font-family: Helvetica,Arial,sans-serif;
+    font-size: 40px;
+    font-weight: bold;
+    text-align: right;
+}
+
+#subheader {
+    border-left: 4px solid #006;
+    border-right: 4px solid #006;
+    margin-left: auto;
+    margin-right: auto;
+    padding: 4px 24px; 
+    color: #444;
+    background: #eee;
+    width: 720px;
+    font-size: 24px;
+    font-weight: bold;
+}
+
+#content {
+    border-left: 4px solid #006;
+    border-right: 4px solid #006;
+    border-bottom: 4px solid #006;
+    margin-left: auto;
+    margin-right: auto;
+    padding: 8px 24px 16px 24px; 
+    color: #444;
+    background: #fff;
+    width: 720px;
+}
+
+#logorow {
+    text-align: center;
+    margin-top: 12px;
+}
+
+.infobox {
+    padding: 10px;
+    margin-bottom: 20px;
+    border: 2px solid red;
+}
+
+li {
+    margin-bottom: 10px;
+}
