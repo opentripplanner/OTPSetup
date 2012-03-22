@@ -6,8 +6,10 @@
 <form action="/create_request" method="POST">
 {% csrf_token %}
 
-  First, you'll create a request, then you'll have a chance to upload
-GTFS.<br/><br/>
+  First, you'll create a request, then you'll have a chance to upload your
+GTFS files. Keep in mind OpenTripPlanner can combine multiple GTFS feeds as 
+long as each agency uses a unique ID (check the agency_id column in the agencies.txt 
+files in each feed.<br/><br/>
 
   Agency:<br/>
   <input type="text" name="agency" /><br/>
@@ -22,7 +24,7 @@ GTFS.<br/><br/>
     <option value="org.opentripplanner.routing.impl.NycFareServiceFactory">NYC</option>
   </select><br/>
 
-  <input type="submit" value="Upload GTFS"><br/>
+  <input type="submit" value="Next >>"><br/>
 
 </form>
 {% endblock %}
