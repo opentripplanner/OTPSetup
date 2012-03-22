@@ -27,7 +27,7 @@ def handle(conn, body, message):
         image = ec2_conn.get_image(settings.DEPLOYMENT_AMI_ID) 
 
         print 'Launching EC2 Instance'
-        image.run(placement='us-east-1b', key_name='otp-dev', security_groups=['default'], instance_type='m1.large') 
+        image.run(subnet_id=settings.VPC_SUBNET_ID, placement='us-east-1b', key_name='otp-dev', instance_type='m1.large')
 
     else:
         send_mail('OTP graph builder failed', 
