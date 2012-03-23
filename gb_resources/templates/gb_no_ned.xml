@@ -26,7 +26,7 @@
     <bean id="osmBuilder" class="org.opentripplanner.graph_builder.impl.osm.OpenStreetMapGraphBuilderImpl">
         <property name="providers">
             <list>
-                <bean class="org.opentripplanner.graph_builder.impl.osm.StreamedFileBasedOpenStreetMapProviderImpl">
+                <bean class="org.opentripplanner.openstreetmap.impl.StreamedFileBasedOpenStreetMapProviderImpl">
                     <property name="path" value="{osmpath}" />
                 </bean>
             </list>
