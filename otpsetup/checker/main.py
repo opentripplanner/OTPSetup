@@ -57,7 +57,7 @@ def validate(conn, body, message):
         os.rmdir(directory)
         publisher = conn.Producer(routing_key="validation_done",
                                   exchange=exchange)
-        publisher.publish({'request_id' : body['request_id'], 'output' : out, 'fareService' : body['fareService']})
+        publisher.publish({'request_id' : body['request_id'], 'output' : out})
         message.ack()
 
     except:
