@@ -9,56 +9,94 @@ from otpsetup import settings
 import base64
 import urllib2
 import socket
-import sys
+import sys, traceback
+import time
+import os
+import subprocess
+
+from datetime import datetime
 
 exchange = Exchange("amq.direct", type="direct", durable=True)
 queue = Queue("deploy_instance", exchange=exchange, routing_key="deploy_instance")
 
+def wait_for_tomcat():
+    
+    attempt = 0
+    max_attempts = 10
+    success = False
+    
+    while (attempt < max_attempts):
+        try: 
+            url ='http://localhost:8080/'
+            req = urllib2.Request(url, None, { })
+            urllib2.urlopen(req)
+            success = True; # only reached if page loads successfully
+            break
+        except: 
+            attempt = attempt + 1
+            time.sleep(10)
+    
+    return success
+
+
 def handle(conn, body, message):
 
-    request_id = body['request_id']
-    s3_id = body['key']
+    try:
+        request_id = body['request_id']
+        s3_id = body['key']
 
-    # download the graph
+        # download the graph
 
-    connection = connect_s3(settings.AWS_ACCESS_KEY_ID, settings.AWS_SECRET_KEY)
-    bucket = connection.get_bucket(settings.GRAPH_S3_BUCKET)
+        connection = connect_s3(settings.AWS_ACCESS_KEY_ID, settings.AWS_SECRET_KEY)
+        bucket = connection.get_bucket(settings.GRAPH_S3_BUCKET)
 
-    key = Key(bucket)
-    key.key = s3_id
-    key.get_contents_to_filename('/var/otp/graphs/Graph.obj')
+        key = Key(bucket)
+        key.key = s3_id
+        key.get_contents_to_filename('/var/otp/graphs/Graph.obj')
 
+        # wait for tomcat
+        
+        tomcat_launched = wait_for_tomcat()
 
-    # deploy on tomcat
+        launch_success = False
 
-    encodedstring = base64.encodestring("tomcat:password")[:-1]
-    auth = "Basic %s" % encodedstring
+        if tomcat_launched is True:
 
-    url ='http://localhost:8080/manager/install?path=/opentripplanner-api-webapp&war=/var/otp/wars/opentripplanner-api-webapp.war'
-    req = urllib2.Request(url, None, {"Authorization": auth })
-    url_handle = urllib2.urlopen(req)
+            # deploy on tomcat
 
-    #print "api deployed: "+url_handle.read()
+            encodedstring = base64.encodestring("tomcat:password")[:-1]
+            auth = "Basic %s" % encodedstring
 
-    url ='http://localhost:8080/manager/deploy?path=/opentripplanner-webapp&war=/var/otp/wars/opentripplanner-webapp.war'
-    req = urllib2.Request(url, None, {"Authorization": auth })
-    url_handle = urllib2.urlopen(req)
+            url ='http://localhost:8080/manager/install?path=/opentripplanner-api-webapp&war=/var/otp/wars/opentripplanner-api-webapp.war'
+            req = urllib2.Request(url, None, {"Authorization": auth })
+            url_handle = urllib2.urlopen(req)
 
-    #print "webapp deployed: "+url_handle.read()
+            url ='http://localhost:8080/manager/deploy?path=/opentripplanner-webapp&war=/var/otp/wars/opentripplanner-webapp.war'
+            req = urllib2.Request(url, None, {"Authorization": auth })
+            url_handle = urllib2.urlopen(req)
 
-
-    # send email alerting administrators
-
-    hostname = socket.gethostname()
-
-    send_mail('OTP instance deployed', 
-        """An OTP instance for request_id %s was deployed on AWS host %s""" % (request_id, hostname),
-        settings.DEFAULT_FROM_EMAIL,
-        settings.ADMIN_EMAILS, fail_silently=False)
-
-    message.ack()
+            launch_success = True
     
-    sys.exit(0)
+        if launch_success is True:
+
+            # publish deployment_ready message
+            publisher = conn.Producer(routing_key="deployment_ready", exchange=exchange)
+            publisher.publish({'request_id' : request_id, 'hostname' : socket.gethostname() })
+
+            # rename otp-webapp as ROOT so that it loads on server's root directory
+            subprocess.call(['mv', '/var/lib/tomcat6/webapps/ROOT', '/var/lib/tomcat6/webapps/ROOT-old'])
+            subprocess.call(['mv', '/var/lib/tomcat6/webapps/opentripplanner-webapp', '/var/lib/tomcat6/webapps/ROOT'])
+
+            message.ack()
+
+            sys.exit(0)
+
+    except:
+
+        now = datetime.now()
+        errfile = "/var/otp/dep_err_%s_%s" % (body['request_id'], now.strftime("%F-%T"))
+        traceback.print_exc(file=open(errfile,"a"))
+        
 
 with DjangoBrokerConnection() as conn:
 
@@ -84,3 +122,4 @@ for reservation in reservations:
 
 if not found_instance:
     print "warning: did not find instance matching host machine"
+
