@@ -94,7 +94,7 @@ def build_graph(workingdir, fare_factory):
     if use_ned:
         gbxml = gbxml.format(graphpath=workingdir, gtfslist=gtfslist, osmpath=extractfile, nedcachepath=nedcachedir, awsaccesskey=settings.AWS_ACCESS_KEY_ID, awssecretkey=settings.AWS_SECRET_KEY, fare_factory=fare_factory)
     else:
-        gbxml = gbxml.format(graphpath=workingdir, gtfslist=gtfslist, osmpath=extractfile)
+        gbxml = gbxml.format(graphpath=workingdir, gtfslist=gtfslist, osmpath=extractfile, fare_factory=fare_factory)
 
     gbfilepath = os.path.join(workingdir, 'gb.xml')
     gbfile = open(gbfilepath, 'w')
