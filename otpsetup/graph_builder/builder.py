@@ -111,18 +111,12 @@ def build_graph(workingdir, fare_factory):
     gb_stdout = result.stdout.read()
     gb_stderr = result.stderr.read()
     graphpath = os.path.join(workingdir, 'Graph.obj')
-    graphsuccess = os.path.exists(graphpath)
+    graphsuccess = os.path.exists(graphpath) & os.path.getsize(graphpath) > 0
     
     results = {}
     
     results['success'] = graphsuccess
-    if graphsuccess:
-        # if successful, read graph annotations as output
-        annoresult = subprocess.Popen(["java", "-Xms2G", "-Xmx2G", "-jar", os.path.join(graphannodir, 'graphanno.jar'), graphpath], stdout=subprocess.PIPE)
-        results['output'] = annoresult.stdout.read()        
-    else:
-        # if failure, store graphbuilder stdout as output
-        results['output'] = 'STDOUT:\n\n%s\n\nSTDERR:\n\n%s' % (gb_stdout, gb_stderr) 
+    results['output'] = 'STDOUT:\n\n%s\n\nSTDERR:\n\n%s' % (gb_stdout, gb_stderr) 
         
     return results
 
