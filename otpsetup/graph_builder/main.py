@@ -4,6 +4,7 @@ from boto import connect_s3, connect_ec2
 from boto.s3.key import Key
 from kombu import Exchange, Queue
 from otpsetup.shortcuts import DjangoBrokerConnection
+from otpsetup.shortcuts import stop_current_instance
 from otpsetup.client.models import GtfsFile
 from otpsetup import settings
 from shutil import copyfileobj
@@ -104,21 +105,6 @@ with DjangoBrokerConnection() as conn:
 
     conn.close()
             
-ec2_conn = connect_ec2(settings.AWS_ACCESS_KEY_ID, settings.AWS_SECRET_KEY)
-
-hostname = socket.gethostname()
-hostname = hostname[3:].replace("-", ".")
-reservations = ec2_conn.get_all_instances()
-running_instances = []
-found_instance = False
-for reservation in reservations:
-    for instance in reservation.instances:
-        private_dns = instance.private_ip_address
-        if private_dns == hostname:
-            instance.stop()
-            found_instance = True
-
-if not found_instance:
-    print "warning: did not find instance matching host machine"
+stop_current_instance()
 
 
