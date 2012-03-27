@@ -7,14 +7,14 @@ STATES = (("running", "Running"),
           ("building", "Request not yet submitted"),
           ("pre_transload", "Getting GTFS"),
           ("submitted", "Sent to validator"),
-          ("validation_complete", "Validation complete, waiting for approval"),
+          ("validate_done", "Validation complete, waiting for approval"),
           ("rejected", "Rejected by administrator"),
           ("accepted", "Accepted, graph building"),
           ("graph_built", "Graph built successfully"),
           ("graph_failed", "Graph builder failed"),
-          ("deployment_instance", "Deployed instance successfully"),          
-          ("deployment_failed", "Deployment failed"),          
-          ("deployment_proxy", "Deployment registered with proxy server"),          
+          ("deploy_inst", "Deployed instance successfully"),          
+          ("deploy_failed", "Deployment failed"),          
+          ("deploy_proxy", "Deployment registered with proxy server"),          
           )
 class InstanceRequest(models.Model):
     state = models.CharField(max_length=15, default='building', choices = STATES)
