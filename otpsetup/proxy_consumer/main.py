@@ -8,7 +8,7 @@ from otpsetup import settings
 import subprocess, sys
 
 exchange = Exchange("amq.direct", type="direct", durable=True)
-queue = Queue("deployment_ready", exchange=exchange, routing_key="deployment_ready")
+queue = Queue("setup_proxy", exchange=exchange, routing_key="setup_proxy")
 
 print "Starting Proxy Consumer"
 
@@ -42,11 +42,11 @@ def handle(conn, body, message):
     
     subprocess.call(['/etc/init.d/nginx','reload'])
 
+    public_url = "http://req-%s.deployer.opentripplanner.org" % request_id
 
-    send_mail('OTP instance deployed',
-        """An OTP instance for request ID %s was deployed at http://%s""" % (request_id, hostname),
-        settings.DEFAULT_FROM_EMAIL,
-        settings.ADMIN_EMAILS, fail_silently=False)
+    # tell controller that proxy mapping is complete
+    publisher = conn.Producer(routing_key="proxy_done", exchange=exchange)
+    publisher.publish({'request_id' : request_id, 'public_url' : public_url})
 
     message.ack()
 

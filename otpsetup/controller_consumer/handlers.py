@@ -20,7 +20,7 @@ def validation_done(conn, body):
         gtfs_file.save()
 
     irequest = InstanceRequest.objects.get(id=request_id)
-    irequest.state = "submitted"
+    irequest.state = "validate_done"
     irequest.save()
 
     #url = reverse("otpsetup.client.adminviews.index")
@@ -39,7 +39,14 @@ def graph_done(conn, body):
     request_id = body['request_id']
     success = body['success']
 
+    irequest = InstanceRequest.objects.get(id=request_id)
+    irequest.graph_builder_output = body['output']
+
     if success:
+
+        irequest.state = "graph_built"
+        irequest.save()
+
         #publish a deploy_instance message
         publisher = conn.Producer(routing_key="deploy_instance", exchange=exchange)
         publisher.publish({'request_id' : request_id, 'key' : body['key'], 'output' : body['output']})
@@ -56,6 +63,10 @@ def graph_done(conn, body):
             instance.add_tag("Name", "deploy-req-%s" % request_id)
 
     else:
+
+        irequest.state = "graph_failed"
+        irequest.save()
+
         send_mail('OTP graph builder failed', 
             """An OTP instance request failed during the graph-building stage.
               
@@ -66,3 +77,45 @@ Graph Builder output:
 """ % (request_id, body['output']),
             settings.DEFAULT_FROM_EMAIL,
             settings.ADMIN_EMAILS, fail_silently=False)
+
+
+def deployment_ready(conn, body): 
+
+    if not 'request_id' in body or not 'hostname' in body:
+        print 'deployment_ready message missing required parameters'
+        return
+   
+    request_id = body['request_id']
+    hostname = body['hostname']
+    password = body['password']
+
+    irequest = InstanceRequest.objects.get(id=request_id)
+    irequest.state = "deploy_inst"
+    irequest.deployment_hostname = hostname
+    irequest.admin_password = password
+    irequest.save()
+    
+    # tell proxy server to create mapping
+    publisher = conn.Producer(routing_key="setup_proxy", exchange=exchange)
+    publisher.publish({'request_id' : request_id, 'hostname' : hostname})
+
+            
+def proxy_done(conn, body):
+
+    request_id = body['request_id']
+    public_url = body['public_url']
+
+    irequest = InstanceRequest.objects.get(id=request_id)
+    irequest.state = "deploy_proxy"
+    irequest.public_url = public_url
+    irequest.save()
+
+    send_mail('OTP Instance Deployed',
+        """An OTP instance for request ID %s was deployed at %s
+
+The admin password is %s        
+""" % (request_id, public_url, irequest.admin_password),
+        settings.DEFAULT_FROM_EMAIL,
+        settings.ADMIN_EMAILS, fail_silently=False)
+
+
