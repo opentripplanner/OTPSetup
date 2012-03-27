@@ -11,8 +11,7 @@ case "$1" in
         cd /var/otp/OTPSetup
         export DJANGO_SETTINGS_MODULE=otpsetup.settings
         screen -d -m -L python -m otpsetup.transloader.main
-        screen -d -m -L python -m otpsetup.django_consumer.main
-        screen -d -m -L python -m otpsetup.graph_consumer.main
+        screen -d -m -L python -m otpsetup.controller_consumer.main
         
         cd /var/otp/OTPSetup/otpsetup
         screen -d -m -L python manage.py runserver 10.0.0.12:80
