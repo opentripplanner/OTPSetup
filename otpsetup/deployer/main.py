@@ -13,8 +13,13 @@ import sys, traceback
 import time
 import os
 import subprocess
+import string
 
 from datetime import datetime
+from random import choice
+
+deployer_resources_dir = '/var/otp/OTPSetup/deployer_resources'
+tomcat_home = '/var/lib/tomcat6'
 
 exchange = Exchange("amq.direct", type="direct", durable=True)
 queue = Queue("deploy_instance", exchange=exchange, routing_key="deploy_instance")
@@ -79,16 +84,35 @@ def handle(conn, body, message):
     
         if launch_success is True:
 
-            # publish deployment_ready message
-            publisher = conn.Producer(routing_key="deployment_ready", exchange=exchange)
-            publisher.publish({'request_id' : request_id, 'hostname' : socket.gethostname() })
-
             # rename otp-webapp as ROOT so that it loads on server's root directory
             subprocess.call(['mv', '/var/lib/tomcat6/webapps/ROOT', '/var/lib/tomcat6/webapps/ROOT-old'])
             subprocess.call(['mv', '/var/lib/tomcat6/webapps/opentripplanner-webapp', '/var/lib/tomcat6/webapps/ROOT'])
 
-            message.ack()
+            # open security-application-context.xml template
+            sactemplate = open(os.path.join(deployer_resources_dir, 'security-application-context.xml'), 'r')
+            sacxml = sactemplate.read()
+            sactemplate.close()
 
+            # generate password and insert into file
+            chars = string.letters + string.digits
+            password = ''.join([choice(chars) for i in range(8)])
+            sacxml = sacxml.format(password=password)
+
+            # overwrite deployed security-application-context.xml
+            sacfilepath = os.path.join(tomcat_home, 'webapps/opentripplanner-api-webapp/WEB-INF/classes/org/opentripplanner/api/security-application-context.xml')
+            sacfile = open(sacfilepath, 'w')
+            sacfile.write(sacxml)
+            sacfile.close()
+            
+            # restart tomcat
+            subprocess.call(['/etc/init.d/tomcat6', 'restart'])
+
+            # publish deployment_ready message
+            publisher = conn.Producer(routing_key="deployment_ready", exchange=exchange)
+            publisher.publish({'request_id' : request_id, 'hostname' : socket.gethostname(), 'password' :  password })
+    
+            # acknowledge original message and exit
+            message.ack()
             sys.exit(0)
 
     except:
@@ -117,7 +141,7 @@ for reservation in reservations:
     for instance in reservation.instances:
         private_dns = instance.private_dns_name.split('.')[0]
         if private_dns == hostname:
-            instance.stop()
+            #instance.stop()
             found_instance = True
 
 if not found_instance:
