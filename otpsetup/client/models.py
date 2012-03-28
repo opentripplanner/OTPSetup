@@ -28,7 +28,7 @@ class InstanceRequest(models.Model):
     deployment_hostname = models.CharField(max_length=30, null=True, blank=True)
     admin_password = models.CharField(max_length=15, null=True, blank=True)
     public_url = models.CharField(max_length=60, null=True, blank=True)
-    graph_builder_output = models.TextField(max_length=20000, null=True, blank=True)    
+    graph_key = models.CharField(max_length=60, null=True, blank=True)
     graph_url = models.CharField(max_length=150, null=True, blank=True)
     graph_builder_output = models.TextField(max_length=20000, null=True, blank=True)  
     ip = models.CharField(max_length=15)
