@@ -2,10 +2,15 @@
 
 from otpsetup.client.models import InstanceRequestForm, InstanceRequest, GtfsFile
 from datetime import datetime, timedelta
+from subprocess import call
 
 from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.shortcuts import redirect
+from django.http import HttpResponse
+
+from boto import connect_s3
+from boto.s3.key import Key
 
 from json import dumps
 from kombu import Exchange
@@ -20,6 +25,29 @@ import uuid
 
 def index(request):   
     return render_to_response(request, 'index.html')
+
+def download_graph(request):
+    try:
+        key = request.REQUEST['key']
+    except KeyError:
+        return HttpResponse("You must specify a graph key")
+    else:
+        s3_id = base64.b64decode(key)
+        s3_conn = connect_s3(settings.AWS_ACCESS_KEY_ID, settings.AWS_SECRET_KEY)        
+        bucket = s3_conn.get_bucket(settings.GRAPH_S3_BUCKET)
+        
+        key = Key(bucket)
+        key.key = 'uploads/' + s3_id
+        s3_id = s3_id.replace('/', '_')
+        path = '/tmp/'+s3_id
+        zippath = path + '.zip'
+        key.get_contents_to_filename(path)
+        call(['zip', '-j', zippath, path])
+         
+        graph_file = open(zippath, 'rb')
+        response = HttpResponse(graph_file, mimetype='application/x-zip-compressed')
+        response['Content-Disposition'] = 'attachment; filename=Graph.zip' 
+        return response
 
 @login_required
 def create_request(request):

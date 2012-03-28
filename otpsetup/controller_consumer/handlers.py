@@ -7,6 +7,8 @@ from django.core.urlresolvers import reverse
 from otpsetup.client.models import InstanceRequest, GtfsFile
 from otpsetup import settings
 
+import base64
+
 exchange = Exchange("amq.direct", type="direct", durable=True)
 
 def validation_done(conn, body):
@@ -39,17 +41,22 @@ def graph_done(conn, body):
     request_id = body['request_id']
     success = body['success']
 
+
+    graph_key = body['key']
+
     irequest = InstanceRequest.objects.get(id=request_id)
     irequest.graph_builder_output = body['output']
 
     if success:
 
         irequest.state = "graph_built"
+        irequest.graph_key = graph_key
+        irequest.graph_url = "http://deployer.opentripplanner.org/download_graph?key=%s" % base64.b64encode(graph_key[8:])
         irequest.save()
 
         #publish a deploy_instance message
         publisher = conn.Producer(routing_key="deploy_instance", exchange=exchange)
-        publisher.publish({'request_id' : request_id, 'key' : body['key'], 'output' : body['output']})
+        publisher.publish({'request_id' : request_id, 'key' : graph_key, 'output' : body['output']})
 
         #start a new deployment instance
         ec2_conn = connect_ec2(settings.AWS_ACCESS_KEY_ID, settings.AWS_SECRET_KEY) 
@@ -113,8 +120,11 @@ def proxy_done(conn, body):
     send_mail('OTP Instance Deployed',
         """An OTP instance for request ID %s was deployed at %s
 
-The admin password is %s        
-""" % (request_id, public_url, irequest.admin_password),
+The graph can be downloaded directly at:
+%s
+
+The authenticated API can be accessed via: admin / %s        
+""" % (request_id, public_url, request.graph_url, irequest.admin_password),
         settings.DEFAULT_FROM_EMAIL,
         settings.ADMIN_EMAILS, fail_silently=False)
 
