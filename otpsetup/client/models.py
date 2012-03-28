@@ -27,7 +27,7 @@ class InstanceRequest(models.Model):
     fare_factory = models.TextField(max_length=200)
     deployment_hostname = models.CharField(max_length=30, null=True, blank=True)
     admin_password = models.CharField(max_length=15, null=True, blank=True)
-    public_url = models.CharField(max_length=40, null=True, blank=True)
+    public_url = models.CharField(max_length=60, null=True, blank=True)
     graph_builder_output = models.TextField(max_length=20000, null=True, blank=True)    
     ip = models.CharField(max_length=15)
 
