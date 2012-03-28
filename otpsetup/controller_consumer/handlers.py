@@ -124,7 +124,7 @@ The graph can be downloaded directly at:
 %s
 
 The authenticated API can be accessed via: admin / %s        
-""" % (request_id, public_url, request.graph_url, irequest.admin_password),
+""" % (request_id, public_url, irequest.graph_url, irequest.admin_password),
         settings.DEFAULT_FROM_EMAIL,
         settings.ADMIN_EMAILS, fail_silently=False)
 
