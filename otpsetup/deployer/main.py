@@ -60,7 +60,22 @@ def handle(conn, body, message):
         key.key = s3_id
         key.get_contents_to_filename('/var/otp/graphs/Graph.obj')
 
-        # wait for tomcat
+        # write tomcat-users file
+        
+        tutemplate = open(os.path.join(deployer_resources_dir, 'tomcat-users.xml'), 'r')
+        tuxml = tutemplate.read()
+        tutemplate.close()
+
+        tuxml = tuxml.format(password=settings.TOMCAT_ADMIN_PASSWORD)
+
+        tufilepath = os.path.join(tomcat_home, 'conf/tomcat-users.xml')
+        tufile = open(tufilepath, 'w')
+        tufile.write(tuxml)
+        tufile.close()
+                    
+        # start & wait for tomcat
+        
+        subprocess.call(['/etc/init.d/tomcat6', 'start'])        
         
         tomcat_launched = wait_for_tomcat()
 
@@ -70,7 +85,7 @@ def handle(conn, body, message):
 
             # deploy on tomcat
 
-            encodedstring = base64.encodestring("tomcat:password")[:-1]
+            encodedstring = base64.encodestring("admin:%s" % settings.TOMCAT_ADMIN_PASSWORD)[:-1]
             auth = "Basic %s" % encodedstring
 
             url ='http://localhost:8080/manager/install?path=/opentripplanner-api-webapp&war=/var/otp/wars/opentripplanner-api-webapp.war'
