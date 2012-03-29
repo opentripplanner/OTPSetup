@@ -111,7 +111,7 @@ def build_graph(workingdir, fare_factory):
     gb_stdout = result.stdout.read()
     gb_stderr = result.stderr.read()
     graphpath = os.path.join(workingdir, 'Graph.obj')
-    graphsuccess = os.path.exists(graphpath) & os.path.getsize(graphpath) > 0
+    graphsuccess = os.path.exists(graphpath) and os.path.getsize(graphpath) > 0
     
     results = {}
     
