@@ -42,12 +42,12 @@ def graph_done(conn, body):
     success = body['success']
 
 
-    graph_key = body['key']
 
     irequest = InstanceRequest.objects.get(id=request_id)
     irequest.graph_builder_output = body['output']
 
     if success:
+        graph_key = body['key']
 
         irequest.state = "graph_built"
         irequest.graph_key = graph_key
