@@ -106,7 +106,7 @@ def build_graph(workingdir, fare_factory):
 
     print 'running OTP graph builder'
     otpjarpath = os.path.join(otpgbdir, 'graph-builder.jar')
-    result = subprocess.Popen(["java", "-Xms6G", "-Xmx6G", "-jar", otpjarpath, gbfilepath], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    result = subprocess.Popen(["java", "-Xms14G", "-Xmx14G", "-jar", otpjarpath, gbfilepath], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     
     gb_stdout = result.stdout.read()
     gb_stderr = result.stderr.read()
