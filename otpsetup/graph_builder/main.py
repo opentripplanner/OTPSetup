@@ -12,6 +12,7 @@ from datetime import datetime
 
 import os
 import socket
+import traceback
 
 import builder
  
@@ -90,7 +91,7 @@ def handle_instance_request(conn, body, message):
 
     except:
         now = datetime.now()
-        errfile = "/var/otp/val_err_%s_%s" % (body['request_id'], now.strftime("%F-%T"))
+        errfile = "/var/otp/gb_err_%s_%s" % (body['request_id'], now.strftime("%F-%T"))
         traceback.print_exc(file=open(errfile,"a"))
         
 with DjangoBrokerConnection() as conn:
