@@ -77,10 +77,7 @@ def graph_done(conn, body):
             """An OTP instance request failed during the graph-building stage.
               
 Request ID: %s
-
-Graph Builder output:
-%s  
-""" % (request_id, body['output']),
+""" % (request_id),
             settings.DEFAULT_FROM_EMAIL,
             settings.ADMIN_EMAILS, fail_silently=False)
 
