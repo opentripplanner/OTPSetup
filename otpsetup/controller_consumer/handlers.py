@@ -44,7 +44,6 @@ def graph_done(conn, body):
 
 
     irequest = InstanceRequest.objects.get(id=request_id)
-    irequest.graph_builder_output = body['output']
 
     if success:
         graph_key = body['key']
@@ -56,7 +55,7 @@ def graph_done(conn, body):
 
         #publish a deploy_instance message
         publisher = conn.Producer(routing_key="deploy_instance", exchange=exchange)
-        publisher.publish({'request_id' : request_id, 'key' : graph_key, 'output' : body['output']})
+        publisher.publish({'request_id' : request_id, 'key' : graph_key})
 
         #start a new deployment instance
         ec2_conn = connect_ec2(settings.AWS_ACCESS_KEY_ID, settings.AWS_SECRET_KEY) 
