@@ -13,7 +13,7 @@ from datetime import datetime
 import os
 import socket
 import traceback
-
+import subprocess
 import builder
  
 exchange = Exchange("amq.direct", type="direct", durable=True)
@@ -43,7 +43,8 @@ def handle_instance_request(conn, body, message):
     try:
         #create a working directory for this feed
         now = datetime.now()
-        directory = "/mnt/req%s_%s" % (body['request_id'], now.strftime("%F-%T"))
+        req_name = "req%s_%s" % (body['request_id'], now.strftime("%F-%T"))
+        directory = os.path.join("/mnt", req_name)
         os.makedirs(directory)
 
         os.makedirs(os.path.join(directory, 'gtfs'))
@@ -65,35 +66,52 @@ def handle_instance_request(conn, body, message):
         fare_factory = body['fare_factory']
 
         gbresults = builder.build_graph(directory, fare_factory)
-               
+                
+        msgparams = { }
+        msgparams['request_id'] = body['request_id']
+        msgparams['success'] = gbresults['success']
+
+        bucket = graph_bucket()
+
         if gbresults['success']:
-            print 'writing to s3..'
-            
-            bucket = graph_bucket()
             key = Key(bucket)
             key.key = "uploads/%s/Graph_%s.obj" % (body['request_id'], datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S"))
-            key.set_contents_from_filename(os.path.join(directory,'Graph.obj'))
-            print 'written'
-            
-            gbresults['key'] = key.key
-            
-        
-        gbresults['request_id'] = body['request_id']
+            graph_file = os.path.join(directory,'Graph.obj')
+            key.set_contents_from_filename(graph_file)
+            msgparams['key'] = key.key
+            subprocess.call(['rm', graph_file])
         
         publisher = conn.Producer(routing_key="graph_done", exchange=exchange)
-        publisher.publish(gbresults)
+        publisher.publish(msgparams)
         
         print 'published graph_done'
         
         message.ack()
-        
-        #os.rmdir(directory)
+
+        # create data tarball and upload to s3
+        tarball = os.path.join('/mnt', ('%s.tar.gz' % req_name))
+        subprocess.call(['tar', 'czf', tarball, directory])
+
+        key = Key(bucket)
+        key.key = "data/%s.tar.gz" % req_name
+        key.set_contents_from_filename(tarball)
+
+        # write gb output to file to s3
+        outputfilename = os.path.join(directory, 'gb_output')
+        outputfile = open(outputfilename, 'w')
+        outputfile.write(gbresults['output'])
+        outputfile.close()
+
+        key = Key(bucket)
+        key.key = "output/%s_output.txt" % req_name
+        key.set_contents_from_filename(outputfilename)
+
 
     except:
         now = datetime.now()
         errfile = "/var/otp/gb_err_%s_%s" % (body['request_id'], now.strftime("%F-%T"))
         traceback.print_exc(file=open(errfile,"a"))
-        
+
 with DjangoBrokerConnection() as conn:
 
     with conn.Consumer(queue, callbacks=[lambda body, message: handle_instance_request(conn, body, message)]) as consumer:
@@ -107,5 +125,4 @@ with DjangoBrokerConnection() as conn:
     conn.close()
             
 stop_current_instance()
-
 

@@ -76,7 +76,7 @@ def build_graph(workingdir, fare_factory):
 
     if use_ned:
         templatefile = open(os.path.join(templatedir, 'gb_ned.xml'), 'r')
-        nedcachedir = os.path.join(workingdir, 'nedcache')
+        nedcachedir = os.path.join('/mnt/nedcache')
         if not os.path.exists(nedcachedir): os.makedirs(nedcachedir)    
     else:
         templatefile = open(os.path.join(templatedir, 'gb_no_ned.xml'), 'r')
@@ -114,9 +114,11 @@ def build_graph(workingdir, fare_factory):
     graphsuccess = os.path.exists(graphpath) and os.path.getsize(graphpath) > 0
     
     results = {}
+
+    gb_output = 'STDOUT:\n\n%s\n\nSTDERR:\n\n%s' % (gb_stdout, gb_stderr)    
     
     results['success'] = graphsuccess
-    results['output'] = 'STDOUT:\n\n%s\n\nSTDERR:\n\n%s' % (gb_stdout, gb_stderr) 
-        
+    results['output'] = gb_output 
+    
     return results
 
