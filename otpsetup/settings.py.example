@@ -1,4 +1,5 @@
 # Django settings for otpsetup project.
+import os
 from registration_defaults.settings import *
 
 AWS_ACCESS_KEY_ID = "your aws access key"
