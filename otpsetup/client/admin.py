@@ -69,7 +69,7 @@ class GtfsFileInline(admin.TabularInline):
     readonly_fields = ('transload_url', 'validation_output')
 
 class InstanceRequestAdmin(ButtonableModelAdmin):
-    list_display = ('user', 'agency', 'submit_date', 'state')
+    list_display = ('id', 'user', 'agency', 'submit_date', 'state')
     list_filter = ('state', 'submit_date')
     actions = [accept_instance_request, reject_instance_request]
     readonly_fields = ('state', 'submit_date', 'decision_date', 'ip')
