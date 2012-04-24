@@ -13,6 +13,7 @@
 
 case "$1" in
     start)
+        route add default gw 10.0.0.12 eth0
         cd /var/otp/OTPSetup/otpsetup/init_resources
         python init_settings.py
         python init_wars.py
