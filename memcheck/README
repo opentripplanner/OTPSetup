@@ -1,0 +1,1 @@
+A very simple, lightweight servlet for remotely querying the total / free memory for a tomcat instance. Used when determining on which machine to deploy an OTP instance.

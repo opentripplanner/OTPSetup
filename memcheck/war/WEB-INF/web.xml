@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<web-app version="2.4" xmlns="http://java.sun.com/xml/ns/j2ee"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xsi:schemaLocation="http://java.sun.com/xml/ns/j2ee http://java.sun.com/xml/ns/j2ee/web-app_2_4.xsd">
+
+    <servlet>
+        <servlet-name>FreeMemoryServlet</servlet-name>
+        <servlet-class>memcheck.FreeMemory</servlet-class>
+    </servlet>
+
+    <servlet-mapping>
+        <servlet-name>FreeMemoryServlet</servlet-name>
+        <url-pattern>/free</url-pattern>
+    </servlet-mapping>
+
+    <servlet>
+        <servlet-name>TotalMemoryServlet</servlet-name>
+        <servlet-class>memcheck.TotalMemory</servlet-class>
+    </servlet>
+
+    <servlet-mapping>
+        <servlet-name>TotalMemoryServlet</servlet-name>
+        <url-pattern>/total</url-pattern>
+    </servlet-mapping>
+
+
+</web-app>
