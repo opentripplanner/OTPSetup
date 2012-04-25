@@ -7,8 +7,8 @@ from boto.s3.key import Key
 
 templatedir = os.path.join(settings.GRAPH_BUILDER_RESOURCE_DIR, 'templates')
 osmosisdir = os.path.join(settings.GRAPH_BUILDER_RESOURCE_DIR, 'osmosis')
+osmfilterdir = os.path.join(settings.GRAPH_BUILDER_RESOURCE_DIR, 'osmfilter')
 osmtoolsdir = os.path.join(settings.GRAPH_BUILDER_RESOURCE_DIR, 'osmtools')
-graphannodir = os.path.join(settings.GRAPH_BUILDER_RESOURCE_DIR, 'graphanno')
 otpgbdir = os.path.join(settings.GRAPH_BUILDER_RESOURCE_DIR, 'otpgb')
 
 def ned_available(boundsfilename):
@@ -68,8 +68,14 @@ def build_graph(workingdir, fare_factory):
     # run osm extract
 
     extractfile = workingdir+'/extract.osm'
-    cmd = os.path.join(osmosisdir,'bin/osmosis')+' --rb '+settings.PLANET_OSM_PATH+' --bounding-polygon file='+polyfile+' --wx '+extractfile
+    cmd = os.path.join(osmosisdir,'bin/osmosis')+' --rb '+settings.PLANET_OSM_PATH+' --bounding-polygon file='+polyfile+' --wx '+extractfile + "-tmp"
     os.system(cmd)
+
+    #run osmfilter to exclude everything we don't use.
+    #remember to keep this in sync with OSMGBI
+    cmd = os.path.join(osmfilterdir, 'osmfilter --keep-ways="highway= platform=" --keep-relations="(type=multipolygon and area=yes) or type=restriction or (type=route and route=road) or type=level_map" --keep-nodes= ' + extractfile + '-tmp -o=' + extractfile)
+    os.system(cmd)
+    os.unlink(extractfile + "-tmp")
 
     # generate graph-builder config file
     use_ned = settings.NED_ENABLED and ned_available(boundsfile)
