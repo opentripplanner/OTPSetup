@@ -1,5 +1,4 @@
-import os
-import subprocess
+import os, subprocess, re, math
 from otpsetup import settings
 
 from boto import connect_s3
@@ -11,32 +10,34 @@ osmfilterdir = os.path.join(settings.GRAPH_BUILDER_RESOURCE_DIR, 'osmfilter')
 osmtoolsdir = os.path.join(settings.GRAPH_BUILDER_RESOURCE_DIR, 'osmtools')
 otpgbdir = os.path.join(settings.GRAPH_BUILDER_RESOURCE_DIR, 'otpgb')
 
-def ned_available(boundsfilename):
-    boundsfile = open(boundsfilename, 'r')
-    bounds = boundsfile.read()
-    boundsarr = bounds.split(",")
-    minx = int(round(float(boundsarr[0])))
-    maxx = int(round(float(boundsarr[1])))
-    miny = int(round(float(boundsarr[2])))
-    maxy = int(round(float(boundsarr[3])))
+def ned_available(polyfilename):
+
+    polyfile = open(polyfilename, 'r')
+    tiffset = set() 
+    for line in polyfile:
+        if re.match("^[ \t]*[0-9.\-]+[ \t]+[0-9.\-]+[ \t]*$", line) is not None:
+            arr = re.split("[ \t]+",line)
+            line = re.sub("^[ \t]+", '', line[:-1])
+            arr = re.split("[ \t]+",line)
+            x = math.floor(float(arr[0]))
+            y = math.ceil(float(arr[1]))
+            nsdir =  'n' if y > 0 else 's'
+            ewdir =  'e' if x > 0 else 'w'
+            tiff_file = "%s%02d%s%03d.tiff" % (nsdir, y, ewdir, x)        
+            tiffset.add(tiff_file)
+   
+    polyfile.close
 
     connection = connect_s3(settings.AWS_ACCESS_KEY_ID, settings.AWS_SECRET_KEY)        
     bucket = connection.get_bucket('ned13')
 
     all_exist = True        
-    for x in range(minx, maxx+1):
-        for y in range(miny, maxy+1):
-            nsdir =  'n' if y > 0 else 's'
-            ewdir =  'e' if x > 0 else 'w'
-            tiff_file = "%s%02d%s%03d.tiff" % (nsdir, abs(y), ewdir, abs(x))
-            
-            key = Key(bucket)
-            key.key = tiff_file
-            print "%s exists: %s" % (tiff_file, key.exists())
-            all_exist = all_exist and key.exists()
+    for tiff_file in tiffset:            
+        key = Key(bucket)
+        key.key = tiff_file
+        print "%s exists: %s" % (tiff_file, key.exists())
+        all_exist = all_exist and key.exists()
 
-    boundsfile.close()
-    
     return all_exist
 
 def build_graph(workingdir, fare_factory):
@@ -78,7 +79,7 @@ def build_graph(workingdir, fare_factory):
     os.unlink(extractfile + "-tmp")
 
     # generate graph-builder config file
-    use_ned = settings.NED_ENABLED and ned_available(boundsfile)
+    use_ned = settings.NED_ENABLED and ned_available(polyfile)
 
     if use_ned:
         templatefile = open(os.path.join(templatedir, 'gb_ned.xml'), 'r')
