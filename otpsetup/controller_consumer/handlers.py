@@ -4,7 +4,7 @@ from boto import connect_ec2
 from kombu import Exchange
 from django.core.mail import send_mail
 from django.core.urlresolvers import reverse
-from otpsetup.client.models import InstanceRequest, GtfsFile
+from otpsetup.client.models import InstanceRequest, GtfsFile, DeploymentHost
 from otpsetup import settings
 
 import base64
@@ -53,20 +53,26 @@ def graph_done(conn, body):
         irequest.graph_url = "http://deployer.opentripplanner.org/download_graph?key=%s" % base64.b64encode(graph_key[8:])
         irequest.save()
 
+        send_mail('OTP Deployer Graph Building Complete',
+            """Instance request %s has completed graph-building and is ready to be deployed.""" % (request_id),
+            settings.DEFAULT_FROM_EMAIL,
+            settings.ADMIN_EMAILS, fail_silently=False)
+
+
         #publish a deploy_instance message
-        publisher = conn.Producer(routing_key="deploy_instance", exchange=exchange)
-        publisher.publish({'request_id' : request_id, 'key' : graph_key})
+        #publisher = conn.Producer(routing_key="deploy_instance", exchange=exchange)
+        #publisher.publish({'request_id' : request_id, 'key' : graph_key})
 
         #start a new deployment instance
-        ec2_conn = connect_ec2(settings.AWS_ACCESS_KEY_ID, settings.AWS_SECRET_KEY) 
+        #ec2_conn = connect_ec2(settings.AWS_ACCESS_KEY_ID, settings.AWS_SECRET_KEY) 
 
-        image = ec2_conn.get_image(settings.DEPLOYMENT_AMI_ID) 
+        #image = ec2_conn.get_image(settings.DEPLOYMENT_AMI_ID) 
 
-        print 'Launching EC2 Instance'
-        reservation = image.run(subnet_id=settings.VPC_SUBNET_ID, placement='us-east-1b', key_name='otp-dev', instance_type='m1.large')
+        #print 'Launching EC2 Instance'
+        #reservation = image.run(subnet_id=settings.VPC_SUBNET_ID, placement='us-east-1b', key_name='otp-dev', instance_type='m1.large')
 
-        for instance in reservation.instances:
-            instance.add_tag("Name", "deploy-req-%s" % request_id)
+        #for instance in reservation.instances:
+        #    instance.add_tag("Name", "deploy-req-%s" % request_id)
 
     else:
 
@@ -124,4 +130,41 @@ The authenticated API can be accessed via: admin / %s
         settings.DEFAULT_FROM_EMAIL,
         settings.ADMIN_EMAILS, fail_silently=False)
 
+
+def multideployer_ready(conn, body):
+
+    try: 
+        dephost = DeploymentHost.objects.get(id=body['request_id'])
+
+        dephost.instance_id = body['instance_id']
+        dephost.host_ip = body['host_ip']
+        dephost.otp_version = body['otp_version']
+        dephost.auth_password = body['auth_password']
+
+        dephost.save()
+
+        # init proxy mapping (for admin access to tomcat)
+        publisher = conn.Producer(routing_key="init_proxy_multi", exchange=exchange)
+        publisher.publish({'host_id' : dephost.id, 'host_ip' : dephost.host_ip})
+    except:
+        print "multideployer error"
+
+
+def multideployment_done(conn, body):
+
+    if not 'request_id' in body or not 'hostname' in body:
+        print 'multideployment_done message missing required parameters'
+        return
+
+    request_id = body['request_id']
+
+    irequest = InstanceRequest.objects.get(id=request_id)
+    dephost = irequest.deployment_host
+    irequest.state = "deploy_inst"
+    irequest.admin_password = dephost.auth_password
+    irequest.save()
+
+    # tell proxy server to create mapping
+    publisher = conn.Producer(routing_key="register_proxy_multi", exchange=exchange)
+    publisher.publish({'request_id' : request_id, 'host_ip' : dephost.host_ip})
 
