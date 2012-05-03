@@ -3,6 +3,8 @@
 from kombu import Exchange, Queue
 from otpsetup.shortcuts import DjangoBrokerConnection
 from otpsetup import settings
+from datetime import datetime
+import traceback
 
 import handlers
 
@@ -22,7 +24,14 @@ queues = [
 def handle(conn, body, message):
     
     key = message.delivery_info['routing_key']
-    getattr(handlers, key)(conn, body)
+    print "handling key "+key
+    try: 
+        getattr(handlers, key)(conn, body)
+    except:
+        print "handler error"
+        now = datetime.now()
+        errfile = "/var/otp/cc_err_%s_%s" % (key, now.strftime("%F-%T"))
+        traceback.print_exc(file=open(errfile,"a"))
     message.ack()
 
 with DjangoBrokerConnection() as conn:
