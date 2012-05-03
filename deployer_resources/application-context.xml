@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xmlns:context="http://www.springframework.org/schema/context" xmlns:aop="http://www.springframework.org/schema/aop"
+    xmlns:tx="http://www.springframework.org/schema/tx" xmlns:sec="http://www.springframework.org/schema/security"
+    xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-2.5.xsd
+           http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-2.5.xsd
+           http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx-2.0.xsd
+           http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-2.0.xsd
+           http://www.springframework.org/schema/security http://www.springframework.org/schema/security/spring-security-2.0.xsd">
+
+    <import resource="classpath:org/opentripplanner/application-context.xml" />
+
+	<bean id="graphService" class="org.opentripplanner.routing.impl.GraphServiceImpl">
+		<property name="bundle" ref="graphBundle" />
+	</bean>
+	
+	<bean id="pathService" class="org.opentripplanner.routing.impl.ContractionPathServiceImpl">
+		<property name="remainingWeightHeuristicFactory" ref="heuristicFactory" />
+		<!-- adjust these timeouts if you are getting too few itineraries per result, or some searches are very slow -->
+        <property name="firstPathTimeout" value="10.0" />
+        <property name="multiPathTimeout" value="1.0" />
+	</bean>
+ 
+	<!-- Replacement pathService for testing multi-objective search -->
+	<!--
+	<bean id="pathService" class="org.opentripplanner.routing.impl.MultiObjectivePathServiceImpl">
+        <property name="timeouts">
+        	<list>
+    	    	<value> 2.0 </value>
+    	    	<value> 1.0 </value>
+    	    	<value> 0.5 </value>
+    	    	<value> 0.4 </value>
+    	    	<value> 0.3 </value>
+	        </list>
+       	</property>
+        <property name="maxPaths" value="4" />
+	</bean>
+	-->
+ 
+	<bean id="heuristicFactory" 
+	      class="org.opentripplanner.routing.impl.DefaultRemainingWeightHeuristicFactoryImpl">
+		<!-- <constructor-arg ref="graphService" />  -->
+	</bean>
+
+	<!--<bean id="pathServiceFactory" class="org.opentripplanner.routing.impl.SingletonPathServiceFactoryImpl">
+		<property name="pathService" ref="pathService" />
+	</bean>-->
+	
+	<bean class="org.opentripplanner.jsonp.JsonpCallbackFilter" id="jsonpCallbackFilter" />
+
+</beans>
+

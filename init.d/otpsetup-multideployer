@@ -1,0 +1,28 @@
+#! /bin/sh
+# /etc/init.d/otpsetup-multideployer
+#
+### BEGIN INIT INFO
+# Provides:          otpsetup-multideployer
+# Required-Start:
+# Required-Stop:
+# Default-Start:
+# Default-Stop:
+# Short-Description: Start otpsetup-multideployer
+# Description:       Start an OTPSetup multiple-graph deployment instance
+### END INIT INFO
+
+case "$1" in
+    start)
+        route add default gw 10.0.0.12 eth0
+        cd /var/otp/OTPSetup/otpsetup/init_resources
+        python init_settings.py
+        cd /var/otp/OTPSetup
+        export DJANGO_SETTINGS_MODULE=otpsetup.settings
+        python -m otpsetup.multideployer_launch.main
+        python -m otpsetup.multideployer_consumer.main &
+
+        exit 0
+        ;;
+esac
+
+
