@@ -114,8 +114,7 @@ def handle(conn, body, message):
                 instance_id = instance.id
                 found_instance = True
 
-    pomfile = open(os.path.join(tomcat_home, 'webapps/opentripplanner-api-webapp/META-INF/maven/org.opentripplanner/opentripplanner-api-webapp/pom.properties'
-), 'r')
+    pomfile = open(os.path.join(tomcat_home, 'webapps/opentripplanner-api-webapp/META-INF/maven/org.opentripplanner/opentripplanner-api-webapp/pom.properties'), 'r')
     version = 'n/a'
     for line in pomfile:
         if line[:8] == 'version=':
@@ -128,8 +127,7 @@ def handle(conn, body, message):
 
     # publish multideployer_ready message
     publisher = conn.Producer(routing_key="multideployer_ready", exchange=exchange)
-    publisher.publish({'request_id' : body['request_id'], 'host_ip' : host_ip, 'instance_id' : instance_id, 'otp_version' : version, 'auth_password' : passwor
-d})
+    publisher.publish({'request_id' : body['request_id'], 'host_ip' : host_ip, 'instance_id' : instance_id, 'otp_version' : version, 'auth_password' : password})
     
     # create init file    
     subprocess.call(['touch', initfile])
