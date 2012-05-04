@@ -19,7 +19,7 @@ case "$1" in
         cd /var/otp/OTPSetup
         export DJANGO_SETTINGS_MODULE=otpsetup.settings
         python -m otpsetup.multideployer_launch.main
-        python -m otpsetup.multideployer_consumer.main &
+        screen -d -m -L python -m otpsetup.multideployer_consumer.main
 
         exit 0
         ;;
