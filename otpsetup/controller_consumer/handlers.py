@@ -155,7 +155,7 @@ def multideployer_ready(conn, body):
 
 def multideployment_done(conn, body):
 
-    if not 'request_id' in body or not 'hostname' in body:
+    if not 'request_id' in body:
         print 'multideployment_done message missing required parameters'
         return
 
