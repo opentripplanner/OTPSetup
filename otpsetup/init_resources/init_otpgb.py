@@ -8,10 +8,9 @@ connection = connect_s3(keys.access_key, keys.secret_key)
 bucket = connection.get_bucket('otpsetup-resources')
 
 key = Key(bucket)
-key.key = 'otpgb.zip'
+key.key = 'graph-builder.jar'
 
-local_file = '/var/otp/resources/otpgb.zip'
+local_file = '/var/otp/resources/otpgb/graph-builder.jar'
 key.get_contents_to_filename(local_file)
 
-subprocess.call(['unzip', '-o', '/var/otp/resources/otpgb.zip', '-d', '/var/otp/resources/otpgb'])
 

@@ -51,10 +51,13 @@ def graph_done(conn, body):
         irequest.state = "graph_built"
         irequest.graph_key = graph_key
         irequest.graph_url = "http://deployer.opentripplanner.org/download_graph?key=%s" % base64.b64encode(graph_key[8:])
+        irequest.otp_version = body['otp_version']
         irequest.save()
 
         send_mail('OTP Deployer Graph Building Complete',
-            """Instance request %s has completed graph-building and is ready to be deployed.""" % (request_id),
+            """Instance request %s has completed graph-building and is ready to be deployed.
+            
+Download URL: %s""" % (request_id, irequest.graph_url),
             settings.DEFAULT_FROM_EMAIL,
             settings.ADMIN_EMAILS, fail_silently=False)
 

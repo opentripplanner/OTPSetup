@@ -80,6 +80,18 @@ def handle_instance_request(conn, body, message):
             key.set_contents_from_filename(graph_file)
             msgparams['key'] = key.key
             subprocess.call(['rm', graph_file])
+            
+            # read otp version 
+            pompropsfile = 'META-INF/maven/org.opentripplanner/opentripplanner-graph-builder/pom.properties'
+            subprocess.call(['unzip', os.path.join(settings.GRAPH_BUILDER_RESOURCE_DIR, 'otpgb/graph-builder.jar'), pompropsfile, '-d', '/mnt'])
+            pomprops = open(os.path.join('/mnt', pompropsfile), 'r')
+            version = 'n/a'
+            for line in pomprops:
+                if line[:8] == 'version=':
+                    version = line[8:].rstrip()
+                    break
+            msgparams['otp_version'] = version
+            
         
         publisher = conn.Producer(routing_key="graph_done", exchange=exchange)
         publisher.publish(msgparams)

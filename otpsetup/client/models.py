@@ -48,6 +48,7 @@ class InstanceRequest(models.Model):
     graph_url = models.CharField(max_length=150, null=True, blank=True)
     ip = models.CharField(max_length=15)
     deployment_host = models.ForeignKey(DeploymentHost, null=True, blank=True)
+    otp_version = models.CharField(max_length=20, null=True, blank=True)
 
     __original_dephost = None
 
