@@ -2,8 +2,8 @@
 import os
 from registration_defaults.settings import *
 
-AWS_ACCESS_KEY_ID = "your aws access key"
-AWS_SECRET_KEY = "your aws secret key"
+AWS_ACCESS_KEY_ID = "{awsaccesskey}"
+AWS_SECRET_KEY = "{awssecretkey}
 
 S3_BUCKET = "otp-gtfs"
 GRAPH_S3_BUCKET = "otp-graphs"
