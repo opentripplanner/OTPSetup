@@ -3,12 +3,9 @@ This directory includes various libraries and templates that the graph-builder m
 The following resources are already included:
 
 gp_resources/templates -- python templates used to generate the graph-builder config file
-gb_resources/graphanno -- utility to read graph-builder annotations from a built graph file
 gb_resources/osmtools -- utility to contruct an osmosis extraction polygon based on GTFS data
 
 ** The following must be added manually after unpacking **
 
-gb_resources/otpbg -- directory containing a copy of OTP's graph-builder.jar (& dependencies). OTP version should match that used on the deployment instances
-
 gb_resources/osmosis -- a copy of the Osmosis program; download from http://wiki.openstreetmap.org/wiki/Osmosis (this can be a symlink; gb_resources/osmosis/bin/osmosis should run program)
-
+gb_resources/osmfilter -- a copy of osmfilter; download from http://wiki.openstreetmap.org/wiki/Osmfilter

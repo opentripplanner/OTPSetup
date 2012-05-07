@@ -1,19 +1,183 @@
-apt-get install rabbitmq-server (or equivalent)
+OTPSetup is a python libary for automating and managing the deployment of OpenTripPlanner instances on AWS. It was developed for the OTP-Deployer application (http://deployer.opentripplanner.org).
 
-python setup.py install
+A typical setup consists of a collection of EC2 instances/AMIs and S3 storage buckets, with AMQP used for managing inter-component communication workflow. Below is an overview of the current OTP-Deployer setup:
 
-wget https://bitbucket.org/ubernostrum/django-registration/downloads/django-registration-0.8-alpha-1.tar.gz
+EC2-based Components:
 
-tar -xzf django-registration-0.8-alpha-1.tar.gz
-cd django-registration-0.8-alpha-1/
-python setup.py install 
+- Controller instance: Hosts the core components, including the RabbitMQ message server, Django webapp (public and admin), and database. Manages communication between the various other components described below.
 
-easy_install django-registration-defaults
+- Validator instance: Dedicated instance for validating submitted GTFS feeds. Normally idle, the validator instance is woken up by the controller when GTFS files are submitted, and receives the feed locations on S3 via AMQP message. 
 
-rabbitmqctl add_vhost /kombu
-rabbitmqctl add_user kombu [password]
-rabbitmqctl set_permissions -p /kombu kombu ".*" ".*" ".*"
+- Graph-builder instance: Dedicated instance for building OTP graphs. Normally idle when not building a graph, the controller instance is woken up by the controller when a graph needs to be built, and receives the GTFS locations on S3 via AMQP message.
 
-python manage.py overload admin client
+- Proxy server instance: Runs nginx server and automates setup of DNS redirect from public domains (e.g. ___.deployer.opentripplanner.org) to internal EC2 instances. Communicates with the controller via AMQP.
 
+- Deployment instance AMI: An AMI that is used to create instances that host an OTP graph and webapp. There are two deployment instance types (each with its own AMI): single-deployment, where each OTP instance gets its own dedicated EC2 instance, created as needed; and multi-deployment, where deployment host instances are created in advance by the admin and OTP instances are assigned to them as the graphs are created, with each host capable of hosting as many OTP instances as its memory will allow. Communicates with the controller via AMQP.
+
+(See the WORKFLOW file for more detailed documentation of the messaging workflow.)
+
+
+S3-based Components -- 
+
+- "otp-gtfs" bucket: user-uploaded GTFS files will be stored here
+
+- "otp-graphs" bucket: successfully built graphs are stored here, along with graph builder output and instance request data (GTFS feeds, OSM extract, GB config file, etc.) 
+
+- "otpsetup-resources" bucket: should contain centralized settings template file (settings-template.py) and current versions of following OTP files: graph-builder.jar, opentripplanner-api-webapp.war, and opentripplanner-webapp.war
+
+- planet.osm volume: a dedicated volume that contains a copy of planet.osm. The graph-builder attaches to this upon startup
+
+- NED tile library: a collection of 1-degree NED tiles, downloaded by the graph builder when building NED-enabled graphs 
+
+
+
+To get started with OTPSetup (single-deployment-per-host mode):
+
+
+** SETTING UP THE CONTROLLER INSTANCE **
+
+Install the RabbitMQ server:
+
+$ apt-get install rabbitmq-server (or equivalent)
+
+Clone the OTPSetup repo into a local directory (e.g. /var/otp/) and run the setup script:
+
+$ git clone git://github.com/openplans/OTPSetup.git
+
+$ python setup.py install
+
+Install Django-Registration:
+
+$ wget https://bitbucket.org/ubernostrum/django-registration/downloads/django-registration-0.8-alpha-1.tar.gz
+
+$ tar -xzf django-registration-0.8-alpha-1.tar.gz
+$ cd django-registration-0.8-alpha-1/
+$ python setup.py install 
+
+$ easy_install django-registration-defaults
+
+Set up the RabbitMQ server:
+
+$ rabbitmqctl add_vhost /kombu
+$ rabbitmqctl add_user kombu [password]
+$ rabbitmqctl set_permissions -p /kombu kombu ".*" ".*" ".*"
+
+Finish the Django setup:
+
+(Note: if you wish to use a database other than SQLite for Django, set it up here and modify settings.py as appropriate)  
+
+$ python manage.py overload admin client
+
+$ python manage.py syncdb
+
+Copy the otpsetup-controller script from OTPSetup/init.d to /etc/init.d and make it executable:
+
+$ cp /var/otp/OTPSetup/init.d/otpsetup-controller /etc/init.d
+$ chmod a+x /etc/init.d/otpsetup-controller
+
+(If OTPSetup was installed to a directory other than /var/otp, modify otpsetup-controller to reflect this)
+
+Modify the "runserver" line to point to the outside address to the django front-end.
+
+Register the script as a bootup script using update-rc.d (on Debian-like systems) or equivalent:
+
+$ update-rc.d otpsetup-controller defaults 
+
+Create controller-specific keys using and specify in OTPSetup/
+Restart the instance to invoke the boot script.
+
+
+
+** SETTING UP THE VALIDATOR INSTANCE **
+
+Clone the OTPSetup repo into a local directory (e.g. /var/otp/):
+
+$ git clone git://github.com/openplans/OTPSetup.git
+
+Copy the otpsetup-val script from OTPSetup/init.d to /etc/init.d and make it executable
+
+$ cp /var/otp/OTPSetup/init.d/otpsetup-val /etc/init.d
+$ chmod a+x /etc/init.d/otpsetup-val
+
+(If OTPSetup was installed to a directory other than /var/otp, modify otpsetup-val to reflect this)
+
+Register the script as a bootup script using update-rc.d (on Debian-like systems) or equivalent:
+
+$ update-rc.d otpsetup-val defaults 
+
+Restart the instance to invoke the boot script.
+
+
+
+** SETTING UP THE GRAPH-BUILDER INSTANCE **
+
+Clone the OTPSetup repo into a local directory (e.g. /var/otp/):
+
+$ git clone git://github.com/openplans/OTPSetup.git
+
+Copy the otpsetup-val script from OTPSetup/init.d to /etc/init.d and make it executable:
+
+$ cp /var/otp/OTPSetup/init.d/otpsetup-gb /etc/init.d
+$ chmod a+x /etc/init.d/otpsetup-bg
+
+(If OTPSetup was installed to a directory other than /var/otp, modify otpsetup-val to reflect this)
+
+Register the script as a bootup script using update-rc.d (on Debian-like systems) or equivalent:
+
+$ update-rc.d otpsetup-gb defaults 
+
+Set up the graph builder resources directory and note location in settings.py (see README in the OTPSetup/gb-resources).
+
+Restart the instance to invoke the boot script.
+
+
+
+** SETTING UP THE PROXY SERVER INSTANCE **
+
+Install Nginx:
+
+$ apt-get install nginx
+
+Clone the OTPSetup repo into a local directory (e.g. /var/otp/)
+
+$ git clone git://github.com/openplans/OTPSetup.git
+
+Copy the otpsetup-deploy script to /etc/init.d and make it executable
+
+$ cp /var/otp/OTPSetup/init.d/otpsetup-deploy /etc/init.d
+$ chmod a+x /etc/init.d/otpsetup-deploy
+
+Restart the instance to invoke the boot script.
+
+
+
+** SETTING UP THE DEPLOYMENT IMAGE (SINGLE-DEPLOYMENT VERSION) **
+
+Create an empty instance from which the image will be produced
+
+Install Tomcat:
+
+$ apt-get install tomcat6
+
+Modify catalina.sh to provide suffucient memory to OTP, e.g. add the line:
+JAVA_OPTS="$JAVA_OPTS -Xms4g -Xmx4g"
+
+Clone the OTPSetup repo into a local directory (e.g. /var/otp/)
+
+$ git clone git://github.com/openplans/OTPSetup.git
+
+Copy the otpsetup-deploy script to /etc/init.d and make it executable
+
+$ cp /var/otp/OTPSetup/init.d/otpsetup-deploy /etc/init.d
+$ chmod a+x /etc/init.d/otpsetup-deploy
+
+(If OTPSetup was installed to a directory other than /var/otp, modify otpsetup-deploy to reflect this)
+
+Register the script as a bootup script using update-rc.d (on Debian-like systems) or equivalent
+
+$ update-rc.d otpsetup-deploy defaults 95
+
+(note: otpsetup-deploy must run *after* tomcat in the boot sequence)
+
+Create the AMI based on the instance in this form, and specify its ID in settings.py
 

@@ -6,42 +6,131 @@ Parameters: {'transload': URL, 'gtfs_file_id' : integer}
 Sent by: webapp
 Handled by: transloader
 
-This is sent when GTFS needs to be downloaded from a URL and loaded
+transload is sent when GTFS needs to be downloaded from a URL and loaded
 into S3.  Sends validate_request.
 
 Routing key: validate_request
 Parameters: {'files' : [list of s3 keys], 'request_id' : integer}
-Sent by: webapp, transloader
+Sent by: public webapp, transloader
 Handled by: checker
 
 This causes the GTFS validator to validate the GTFS data.  Sends
-validation_done.
+validation_done back to the controller.
 
 Routing key: validation_done
 Parameters: {'request_id' : integer, 'output' : [{'key': s3 id, 'errors' : text}, ...]})
 Sent by: checker
-Handled by: django_consumer
+Handled by: controller_consumer
 
-django_consumer updates the webapp database and sends out an email
-to the admins requesting that the validated data be approved
+after validation completes, controller_consumer updates the webapp database
+with validation results and sends out an email to the admins requesting that
+the validated data be approved for graph building
 
 Routing key: create_instance
 Parameters: { 'files' : [list of s3 keys], 'request_id' : integer }
-Sent by: webapp
+Sent by: admin webapp
 Handled by: graph_builder
+
+After , the graph_builder worker istance is activated (as needed)
 
 Routing key: graph_done
 Parameters: { 'request_id' : integer, 'success' : boolean, 'key': s3 id, 'output' : text }
 Sent by: graph_builder
-Handled by: graph_consumer
+Handled by: controller_consumer
 
-graph_consumer does one of two things: if graph building was successful, it spins 
-up a new deployment instance and dispatches a deploy_instance message. If graph
-building failed, graph_consumer sends an email to the admins alerting of the failure
+the controller recieves graph_done messages and updates the django db
+with the graph builder results. the remaining workflow differs based on
+whether this a single- or multi-deployment application.
+
+SINGLE-DEPLOYMENT:
 
 Routing key: deploy_instance
-Parameters: { 'request_id' : integer, 'key': s3 id, 'output' : text }
-Sent by: graph_consumer
+Parameters: { 'request_id' : integer, 'key': graph s3 id, 'output' : text }
+Sent by: controller_consumer
 Handled by: deployer
 
-deployer emails the admins upon successful deployment
+controller publishes message with link to built graph and spins up deployment
+instance to receive it
+
+Routing key: deployment_ready
+Parameters: { 'request_id' : integer, 'hostname': text }
+Sent by: deployer
+Handled by: controller_consumer
+
+deployed instance notifies controller once complete, which then tells proxy
+to set up DNS mapping
+
+Routing key: setup_proxy
+Parameters: { 'request_id' : integer, 'hostname' : text }
+Sent by: controller_consumer
+Handled by: proxy_consumer
+
+proxy server sets up mapping and notifies controller of public url
+
+Routing key: proxy_done
+Parameters: { 'request_id' : integer, 'public_url' : text }
+Sent by: proxy_consumer
+Handled by: controller_consumer
+
+after deployment sequence is complete, the controller emails the admins with
+details
+
+
+MULTI-DEPLOYMENT:
+
+The following message chain is invoked when a multi-deployment host is being created:
+
+Routing key: launch_multideployer
+Parameters: { 'request_id' }
+Sent by: admin client
+Handled by: multideployer_launch
+
+the admin client publishes a launch_multideployer message and creates a new instance to receive it
+
+Routing key: multideployer_ready
+Parameters: { 'request_id' : integer, 'host_ip' : text, 'instance_id' : text, 'otp_version' : text, 'auth_password' : text }
+Sent by: multideployer_launch
+Handled by: controller_consumer
+
+newly-launched host tells controller it is ready (note: 'request_id' here refers to the new host request, not an OTP instance request)
+
+Routing key: init_proxy_multi
+Parameters: { 'request_id' : integer, 'host_ip' : text }
+Sent by: controller_consumer
+Handled by: proxy_consumer
+
+proxy consumer is notified of new multi-deployment host, sets up DNS routing to host isntance for admin access to tomcat. no response needed.
+
+
+The following message chain is invoked when an individual OTP instance is being deployed on a multi-deployment host:
+
+Routing key: deploy_graph_multi
+Parameters: { 'request_id' : integer, 'instance_id' : text, 'graph_key' : text }
+Sent by: controller_consumer
+Handled by: multideployer_consumer
+
+controller tells specific host to deploy new graph; host receives and sends 'done' message after deploying
+
+Routing key: multideployment_done
+Parameters: { 'request_id' : integer }
+Sent by: multideployer_consumer
+Handled by: controller_consumer
+
+controller is told that deployment was complete, then tells proxy to create DNS mapping
+
+Routing key: register_proxy_multi
+Parameters: { 'request_id' : integer, 'host_ip' : text }
+Sent by: controller_consumer
+Handled by: proxy_consumer
+
+proxy server sets up mapping and notifies controller of public url
+
+Routing key: proxy_done
+Parameters: { 'request_id' : integer, 'public_url' : text }
+Sent by: proxy_consumer
+Handled by: controller_consumer
+
+after deployment sequence is complete, the controller emails the admins with
+details
+
+
