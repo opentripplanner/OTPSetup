@@ -3,56 +3,96 @@
 {% block title %}Upload a GTFS Feed{% endblock %}
 
 {% block content %}
+
+<div style="float:right; width: 280px; border: 8px solid #ddd; min-height: 200px;">
 {% if uploaded %}
 
-<div class='infobox'>
-
-<div style='float: left; width: 450px;'>
-<div style='font-size:14px; margin-bottom: 6px;'>You have submitted <b>{{ uploaded }}</b> GTFS feed(s) so far.</div>
-<i>If you have no more feeds to	submit, click the "Finished" button to the right. Otherwise, use the form below	to submit additional feeds.</i>
+<div style="padding:10px; min-height: 180px; font-size: 11px;">
+<div style='font-weight: bold; font-size:12px; margin-bottom: 6px;'>{{ uploaded }} GTFS feed(s) submitted so far:</b></div>
+{% for file in files %}
+<div style="float:left"> &bull;</div>
+<div style="margin: 3px 0px 0px 12px; word-wrap: break-word;">{{ file.name }} 
+[<a href="/remove_gtfs?request_id={{ request_id }}&gtfsfile_id={{ file.id }}">remove</a>]</div>
+{% endfor %}
 </div>
 
-<div style='margin-left: 470px; height:40px; text-align:right; padding-top: 15px;'>
+<div style="background: #ddd; text-align:center; padding-top: 8px;">
 <form action="/finalize_request" method="POST">
 {% csrf_token %}
   <input type="hidden" name="request_id" value="{{request_id}}" />
-  <input type="submit" value="Finished Submitting GTFS">
+  <input type="submit" value="Finished Submitting GTFS Feeds" style="font-size: 16px; font-weight: bold;">
 </form>
 </div>
-<div clear='both'></div>
-</div>
+
+{% else %}
+<div style="padding: 10px; font-style: italic;">No GTFS feeds submitted yet.</div>
 {% endif %}
 
+</div>
 
+<div style="margin-right: 330px;">
+Below you may submit one or more GTFS feeds for use when building your OTP graph. There are two ways to submit feeds:
+</div>
+
+<!-- upload box -->
+
+<div style="background: url(/static/upload_bg.png); background-position: right center; padding: 10px 5px; margin: 15px 300px 0px 0px;">
+
+<div style="float:left; padding: 4px 0px 0px 3px;"><img src="/static/hdd_icon.png" width=32></div>
+
+<div style="margin-left: 45px;">
+<span style="font-weight: bold; font-size: 14px;">1. Upload a File From Your Computer:</span>
 <form action="https://{{ s3_bucket }}.s3.amazonaws.com/" method="post" enctype="multipart/form-data">
 
   <input type="hidden" name="key" value="{{ upload_filename }}">
-  <input type="hidden" name="AWSAccessKeyId" value="{{ aws_access_key_id }}"> 
-  <input type="hidden" name="acl" value="private"> 
+  <input type="hidden" name="AWSAccessKeyId" value="{{ aws_access_key_id }}">
+  <input type="hidden" name="acl" value="private">
   <input type="hidden" name="success_action_redirect" value="{{ after_upload_url }}">
   <input type="hidden" name="policy" value="{{ base64_policy }}">
   <input type="hidden" name="signature" value="{{ signature }}">
 
-  <div style='text-align: center; margin-bottom: 20px;'>
-  <span style='font-size:16px; font-weight: bold;'>Local GTFS feed to upload:</span><br /> 
-  <input name="file" type="file"> 
-  <p><input type="submit" value="Upload GTFS"><br/>
-  <p><i>If your GTFS feed is already on the web, simply <a href="/transload?request_id={{request_id}}">point us to that</a> instead.</i>
-  </div>
+  <input name="file" type="file" style="font-size:12px;">
+  <input type="submit" value="Upload GTFS" style="font-size:12px;"><br/>
+</form>
+</div>
+</div>
 
+
+<!-- transload box -->
+
+<div style="background: url(/static/upload_bg.png); background-position: right center; padding: 10px 5px; margin: 15px 300px 0px 0px;">
+
+<div style="float:left; padding: 4px 0px 0px 3px;"><img src="/static/web_icon.png" width=32></div>
+
+<div style="margin-left: 45px;">
+<span style="font-weight: bold; font-size: 14px;">2. Read a File Already On the Web:</span>
+<form action="/done_transload" method="post" enctype="multipart/form-data">
+{% csrf_token %}
+  <input type="hidden" name="request_id" value="{{request_id}}" />
+
+  URL: <input type="text" name="transload_url" style="width:210px; font-size: 12px;" />
+  <input type="submit" value="Load GTFS" style="font-size: 12px;">
+</form> 
+</div>
+</div>
+
+<!-- notes -->
+
+<div style="margin: 15px 330px 0px 0px;">
   <b>Notes:</b>
   <ul>
-  <li>The format of the uploaded file should be a ZIP archive that contains the individual GTFS files (agency.txt, routes.txt, etc.) in the 
+  <li>The format of the submitted file should be a ZIP archive that contains the individual GTFS files (agency.txt, routes.txt, etc.) in the
 top-level directory of the archive.</li>
 
-  <li>The file may take a long time to upload, as GTFS feeds are typically
+  <li>Uploaded files may take a long time to transmit, as GTFS feeds are typically
   rather large.  Do not click the button a second time.  If you get a
-  timeout, try <a href="/transload?request_id={{request_id}}">linking
-  to your GTFS instead</a>.</li>
+  timeout, try reading it from the web instead.</li>
 
   <li>You will have a chance to upload/transload additional GTFS feeds once this one
   is complete.</li>
   </ul>
-</form> 
+</div>
+
+
 {% endblock %}
 

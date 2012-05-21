@@ -71,6 +71,11 @@ def upload(request):
         return redirect("/")
 
     uploaded = irequest.gtfsfile_set.count()
+    files = [ ]
+    for file in irequest.gtfsfile_set.all():
+        file_name = file.s3_key if (file.s3_key is not None) else file.transload_url
+        file_obj = { 'name' : file_name, 'id' : file.id }
+        files.append(file_obj)
 
     base_filename = "uploads/%s/%s_" % (request_id, str(uuid.uuid4()))
     upload_filename = base_filename + "${filename}"
@@ -100,6 +105,15 @@ def done_upload(request):
     return redirect("/upload?request_id=%s" % irequest.id)
 
 @login_required
+def remove_gtfs(request):
+    request_id = request.REQUEST['request_id']
+    gtfsfile_id = request.REQUEST['gtfsfile_id']    
+    gtfsfile = GtfsFile.objects.get(id=gtfsfile_id)
+    gtfsfile.delete()
+
+    return redirect("/upload?request_id=%s" % request_id)
+
+@login_required
 def transload(request):
     request_id = request.REQUEST['request_id']
     irequest = InstanceRequest.objects.get(id=request_id)
@@ -116,7 +130,7 @@ def done_transload(request):
     gtfs_file = GtfsFile(instance_request=irequest, transload_url=request.REQUEST['transload_url'])
     gtfs_file.save()
 
-    return redirect("/transload?request_id=%s" % request_id)
+    return redirect("/upload?request_id=%s" % request_id)
 
 @login_required
 def finalize_request(request):
@@ -179,3 +193,4 @@ def s3_sign(doc, key):
     policy = base64.b64encode(doc)
     signature = base64.b64encode(hmac.new(key, policy, sha).digest())
     return signature
+
