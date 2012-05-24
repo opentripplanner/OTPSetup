@@ -1,23 +1,30 @@
 {% extends "base.html" %}
 
-{% block title %}Welcome{% endblock %}
+{% block title %}{% endblock %}
 
 {% block content %}
-<div style='float: left;'>
-<img src="https://github.com/openplans/OpenTripPlanner/wiki/Demos/screenshot_small.png">
+<div style='float: left; margin-top:30px; margin-left:5px;'>
+<img src="/static/monitor.png">
 </div>
 
-<div style="margin: 20px 0px 0px 340px;">
-Want to try out <a href="http://www.opentripplanner.org">OpenTripPlanner</a> the quick and easy way?  Just send us
-your GTFS and we'll set up a demo server for you.  We'll email you as
-soon as it's ready, and you can try it out for a few days -- at no
-cost!
+<div style="margin: 10px 0px 0px 340px; font-size:15px;">
+<span style="font-weight:900; font-size: 24px">Get Started with OpenTripPlanner the Quick and Easy Way</span>
+<p>OTP Deployer is an online service for launching deployments of <a href="http://www.opentripplanner.org">OpenTripPlanner</a>, the leading
+open source platform for multimodal trip itinerary planning and analysis.
 
-<p>If you want to keep going after that, you can do so on a monthly
-basis.
+<p>
+Simply submit your transit data as one or more GTFS feed(s), and a live OTP instance will be built for you. You'll be notified by email once 
+complete, and your demo server will be online for a week &mdash; at no cost! 
 
-<p>To get started, <a href="/create_request">create an instance request</a>.
+<p>If you want to keep going after that, you can do so on a monthly basis. Or, simply download the graph and host it elsewhere.
 </div>
+
 <div style="clear:both"></div>
+
+<div style="text-align: center; margin-top: 30px; font-size: 18px;">
+<p>To get started, <a href="/accounts/register"><b>create a free account</b></a>. Once logged in, you may <a href="/create_request"><b>create an 
+instance request</b></a>.
+</div>
+
 {% endblock %}
 

@@ -1,57 +1,92 @@
 body {
     margin: 0;
     padding: 0;
-    font-size: 12px;
-    font-family: Lucida,Verdana,Arial,sans-serif;
-    background-image:url('/static/bg.gif');
+    font-size: 1.4 em;
+    font-family: 'Lato',sans-serif;
+    /*background-image:url('/static/bg.gif');*/
+    background: #04165c;
+    background-image: url('/static/worldbg.png');
+    background-position: center top;
+    background-repeat: no-repeat;    
+}
+
+a {
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
 }
 
 #header {
     margin-top: 50px;
     margin-left: auto;
     margin-right: auto;
-    padding: 6px 24px; 
+    padding: 10px 24px; 
     color: #eee;
-    background: #006;
-    background-image:url('/static/opentripplanner-logo.png');
-    background-repeat: no-repeat;
-    background-position: 20px 8px;
+    background-image:url('/static/bluebg.png');
     width: 728px;
-    height: 52px;
+    height: 56px;
     font-family: Helvetica,Arial,sans-serif;
     font-size: 40px;
     font-weight: bold;
-    text-align: right;
+    text-align: left;
 }
 
 #subheader {
-    border-left: 4px solid #006;
-    border-right: 4px solid #006;
     margin-left: auto;
     margin-right: auto;
     padding: 4px 24px; 
     color: #444;
-    background: #eee;
-    width: 720px;
+    background-image:url('/static/graybg.png');
+    /*background: #ddd;*/
+    width: 728px;
+    height: 30px;
+    /*font-size: 24px;
+    font-weight: bold;*/
+}
+
+#subheadtitle {
+    float: left;
+    width: 500px;
     font-size: 24px;
-    font-weight: bold;
+    font-weight: 900;
+}
+
+#subheadlogin {
+    margin-left: 520px;
+    font-size: 12px;
+    text-align: right;
+    padding-top: 11px;    
 }
 
 #content {
-    border-left: 4px solid #006;
-    border-right: 4px solid #006;
-    border-bottom: 4px solid #006;
     margin-left: auto;
     margin-right: auto;
-    padding: 8px 24px 16px 24px; 
+    padding: 24px 24px 16px 24px; 
     color: #444;
-    background: #fff;
-    width: 720px;
+    background-image:url('/static/whitebg.png');
+    width: 728px;
 }
 
-#logorow {
-    text-align: center;
-    margin-top: 12px;
+#footertop {
+    margin-top: 24px;
+    width: 776px;
+    height: 6px;
+    margin-left: auto;
+    margin-right: auto;
+    background-image:url('/static/bluebg.png');
+}
+
+#footer {
+    margin-left: auto;
+    margin-right: auto;
+    padding: 12px 24px 0px 24px; 
+    background-image:url('/static/whitebg.png');
+    width: 728px;
+    height: 90px;
+    color: #555;
+    font-size: 14px;
 }
 
 .infobox {
