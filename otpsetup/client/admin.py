@@ -155,7 +155,7 @@ def launch_deployment_host(modeladmin, request, queryset):
 
         image = ec2_conn.get_image(settings.MULTIDEPLOYER_AMI_ID) 
 
-        reservation = image.run(subnet_id=settings.VPC_SUBNET_ID, placement='us-east-1b', key_name='otp-dev', instance_type='m1.large')
+        reservation = image.run(subnet_id=settings.VPC_SUBNET_ID, placement='us-east-1b', key_name='otp-dev', instance_type='m2.xlarge')
 
         for instance in reservation.instances:
             instance.add_tag("Name", dephost.name)
