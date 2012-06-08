@@ -15,6 +15,7 @@ exchange = Exchange("amq.direct", type="direct", durable=True)
 queues = [
     Queue("validation_done", exchange=exchange, routing_key="validation_done"),
     Queue("graph_done", exchange=exchange, routing_key="graph_done"),
+    Queue("rebuild_graph_done", exchange=exchange, routing_key="rebuild_graph_done"),
     Queue("deployment_ready", exchange=exchange, routing_key="deployment_ready"),
     Queue("proxy_done", exchange=exchange, routing_key="proxy_done"),
     Queue("multideployer_ready", exchange=exchange, routing_key="multideployer_ready"),

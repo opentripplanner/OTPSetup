@@ -45,6 +45,7 @@ class InstanceRequest(models.Model):
     admin_password = models.CharField(max_length=15, null=True, blank=True)
     public_url = models.CharField(max_length=60, null=True, blank=True)
     graph_key = models.CharField(max_length=60, null=True, blank=True)
+    data_key = models.CharField(max_length=60, null=True, blank=True)
     graph_url = models.CharField(max_length=150, null=True, blank=True)
     ip = models.CharField(max_length=15)
     deployment_host = models.ForeignKey(DeploymentHost, null=True, blank=True)

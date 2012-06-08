@@ -23,7 +23,7 @@ def ned_available(polyfilename):
             y = math.ceil(float(arr[1]))
             nsdir =  'n' if y > 0 else 's'
             ewdir =  'e' if x > 0 else 'w'
-            tiff_file = "%s%02d%s%03d.tiff" % (nsdir, y, ewdir, x)        
+            tiff_file = "%s%02d%s%03d.tiff" % (nsdir, abs(y), ewdir, abs(x))   
             tiffset.add(tiff_file)
    
     polyfile.close
@@ -40,7 +40,8 @@ def ned_available(polyfilename):
 
     return all_exist
 
-def build_graph(workingdir, fare_factory):
+
+def prepare_graph_builder(workingdir, fare_factory):
 
     # copy stop files to single directory
 
@@ -68,9 +69,10 @@ def build_graph(workingdir, fare_factory):
 
     # run osm extract
 
-    extractfile = workingdir+'/extract.osm'
+    extractfile = os.path.join(workingdir, '/extract.osm')
     cmd = os.path.join(osmosisdir,'bin/osmosis')+' --rb '+settings.PLANET_OSM_PATH+' --bounding-polygon file='+polyfile+' --wx '+extractfile + "-tmp"
     os.system(cmd)
+    
 
     #run osmfilter to exclude everything we don't use.
     #remember to keep this in sync with OSMGBI
@@ -109,10 +111,12 @@ def build_graph(workingdir, fare_factory):
     gbfile.close()
 
 
-    # run graph builder
-
+def run_graph_builder(workingdir):
     print 'running OTP graph builder'
+
+    gbfilepath = os.path.join(workingdir, 'gb.xml')
     otpjarpath = os.path.join(otpgbdir, 'graph-builder.jar')
+
     result = subprocess.Popen(["java", "-Xms14G", "-Xmx14G", "-jar", otpjarpath, gbfilepath], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     
     gb_stdout = result.stdout.read()

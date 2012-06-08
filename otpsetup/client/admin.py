@@ -63,6 +63,30 @@ def reject_instance_request(modeladmin, request, queryset):
 reject_instance_request.short_description = "Reject an instance request"
 
 
+def rebuild_instance_request(modeladmin, request, queryset):
+    exchange = Exchange("amq.direct", type="direct", durable=True)
+    conn = DjangoBrokerConnection()
+
+    publisher = conn.Producer(routing_key="rebuild_graph",
+                              exchange=exchange)
+
+    for irequest in queryset:
+        publisher.publish({"request_id" : irequest.id, "data_key" : irequest.data_key})
+
+    if hasattr(queryset, 'update'):
+        queryset.update(state='accepted', decision_date=datetime.now())
+    else:
+        for irequest in queryset:
+            irequest.state = "accepted"
+            irequest.decision_date = datetime.now()
+            irequest.save()
+
+    #launch a graph builder EC2 instance
+    check_for_running_instance(settings.GRAPH_BUILDER_AMI_ID)
+
+rebuild_instance_request.short_description = "Rebuild graph using archived configuration data"
+
+
 class GtfsFileInline(admin.TabularInline):
     model = GtfsFile
     readonly_fields = ('transload_url', 'validation_output')
@@ -70,7 +94,7 @@ class GtfsFileInline(admin.TabularInline):
 class InstanceRequestAdmin(ButtonableModelAdmin):
     list_display = ('id', 'user', 'agency', 'submit_date', 'state', 'otp_version', 'deployment_host')
     list_filter = ('state', 'submit_date')
-    actions = [accept_instance_request, reject_instance_request]
+    actions = [accept_instance_request, reject_instance_request, rebuild_instance_request]
     readonly_fields = ('state', 'submit_date', 'decision_date', 'ip', 'otp_version')
 
     inlines = [

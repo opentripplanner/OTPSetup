@@ -91,6 +91,42 @@ Request ID: %s
             settings.ADMIN_EMAILS, fail_silently=False)
 
 
+def rebuild_graph_done(conn, body):
+
+    request_id = body['request_id']
+    success = body['success']
+
+    irequest = InstanceRequest.objects.get(id=request_id)
+
+    if success:
+        graph_key = body['key']
+
+        irequest.state = "graph_built"
+        irequest.graph_key = graph_key
+        irequest.graph_url = "http://deployer.opentripplanner.org/download_graph?key=%s" % base64.b64encode(graph_key[8:])
+        irequest.otp_version = body['otp_version']
+        irequest.save()
+
+        send_mail('OTP Deployer Graph Rebuilding Complete',
+            """Instance request %s has completed graph rebuilding.
+            
+Download URL: %s""" % (request_id, irequest.graph_url),
+            settings.DEFAULT_FROM_EMAIL,
+            settings.ADMIN_EMAILS, fail_silently=False)
+
+    else:
+        irequest.state = "graph_failed"
+        irequest.save()
+
+        send_mail('OTP graph rebuilding failed', 
+            """An OTP instance request failed during the graph rebuilding stage.
+              
+Request ID: %s
+""" % (request_id),
+            settings.DEFAULT_FROM_EMAIL,
+            settings.ADMIN_EMAILS, fail_silently=False)
+	
+
 def deployment_ready(conn, body): 
 
     if not 'request_id' in body or not 'hostname' in body:
