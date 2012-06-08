@@ -6,7 +6,7 @@ from django.conf import settings
 from django.contrib import admin
 from kombu import Exchange
 from models import InstanceRequest, AmazonMachineImage, GtfsFile
-import urllib2, sys
+import urllib2, sys, time
 
 from otpsetup.client.lib.buttonable_model_admin import ButtonableModelAdmin
 from otpsetup.client.models import InstanceRequest, GtfsFile, DeploymentHost
@@ -156,6 +156,8 @@ def launch_deployment_host(modeladmin, request, queryset):
         image = ec2_conn.get_image(settings.MULTIDEPLOYER_AMI_ID) 
 
         reservation = image.run(subnet_id=settings.VPC_SUBNET_ID, placement='us-east-1b', key_name='otp-dev', instance_type='m2.xlarge')
+
+        time.sleep(5)
 
         for instance in reservation.instances:
             instance.add_tag("Name", dephost.name)
