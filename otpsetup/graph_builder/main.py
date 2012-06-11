@@ -36,7 +36,7 @@ with DjangoBrokerConnection() as conn:
     with conn.Consumer(queues, callbacks=[lambda body, message: handle(conn, body, message)]) as consumer:
         # Process messages and handle events on all channels
         while True:
-            conn.drain_events()
+            conn.drain_events(timeout=600)
 
             
 stop_current_instance()
