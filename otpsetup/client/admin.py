@@ -92,7 +92,7 @@ class GtfsFileInline(admin.TabularInline):
     readonly_fields = ('transload_url', 'validation_output')
 
 class InstanceRequestAdmin(ButtonableModelAdmin):
-    list_display = ('id', 'user', 'agency', 'submit_date', 'state', 'otp_version', 'deployment_host')
+    list_display = ('id', 'user', 'agency', 'submit_date', 'state', 'otp_version', 'deployment_host', 'email_link')
     list_filter = ('state', 'submit_date')
     actions = [accept_instance_request, reject_instance_request, rebuild_instance_request]
     readonly_fields = ('state', 'submit_date', 'decision_date', 'ip', 'otp_version')
@@ -100,6 +100,31 @@ class InstanceRequestAdmin(ButtonableModelAdmin):
     inlines = [
         GtfsFileInline,
     ]
+
+    def email_link(self, obj):
+        if(obj.graph_url == None or obj.public_url == None):
+            return "N/A"
+
+        html = "<script type=\"text/javascript\">"
+        html += "function open_email_window_%s() {" % obj.id
+        html += "    myWindow=window.open('','','width=800,height=300');"
+        html += "    myWindow.document.write('<div style=\"font-family:sans-serif; font-size:12px;\">');"
+        html += "    myWindow.document.write('To: %s<br>');" % obj.user.email
+        html += "    myWindow.document.write('Subject: Your OTP Deployer Request for %s');" % obj.agency
+        html += "    myWindow.document.write('<p>This email is regarding the OTP Deployer request you submitted for \"%s\" on %s. ');" % (obj.agency, obj.submit_date.strftime("%B %d")) 
+        html += "    myWindow.document.write('The OTP instance has been deployed at:<br>%s');" % obj.public_url
+        html += "    myWindow.document.write('<p>This instance will remain online for the following week. Please contact us if you would like to discuss longer-term hosting options.');"         
+        html += "    myWindow.document.write('<p>Additionally, the graph file can be downloaded directly at:<br>%s');" % obj.graph_url
+        html += "    myWindow.document.write('<p>Thank you for your interest in OTP and please let me know if you have any questions.');"
+        html += "    myWindow.document.write('/<div>');"
+        html += "    myWindow.focus();"
+        html += "}"
+        html += "</script>"
+        html += "<a href='javascript:open_email_window_%s()'>Email Text</a>" % obj.id
+        return html 
+    email_link.short_description = "email link"
+    email_link.allow_tags = True
+
 
     def approve_or_reject_buttons(self, request=None, object_id=None):
         if request is None:
