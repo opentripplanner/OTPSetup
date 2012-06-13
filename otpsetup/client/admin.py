@@ -91,13 +91,13 @@ rebuild_instance_request.short_description = "Rebuild graph using archived confi
 
 class GtfsFileInline(admin.StackedInline):
     model = GtfsFile
-    fields = ('s3_key', 'transload_url', 'validation_output_str')
+    fields = ('s3_key', 'transload_url', 'validation_output_str', 'extra_properties')
     readonly_fields = ('transload_url', 'validation_output', 'validation_output_str')
 
     formfield_overrides = {
         models.CharField: {'widget': TextInput(attrs={'size':118})},
+        models.TextField: {'widget': Textarea(attrs={'rows':4, 'cols':84})},
     }
-
 
 
 class InstanceRequestAdmin(ButtonableModelAdmin):
