@@ -1,9 +1,10 @@
-
 from boto import connect_s3, connect_ec2
 from boto.s3.key import Key
 from datetime import datetime
 from django.conf import settings
 from django.contrib import admin
+from django.db import models
+from django.forms import TextInput
 from kombu import Exchange
 from models import InstanceRequest, AmazonMachineImage, GtfsFile
 import urllib2, sys, time
@@ -87,15 +88,22 @@ def rebuild_instance_request(modeladmin, request, queryset):
 rebuild_instance_request.short_description = "Rebuild graph using archived configuration data"
 
 
-class GtfsFileInline(admin.TabularInline):
+class GtfsFileInline(admin.StackedInline):
     model = GtfsFile
-    readonly_fields = ('transload_url', 'validation_output')
+    fields = ('s3_key', 'transload_url', 'validation_output')
+    readonly_fields = ('transload_url',)
+
+    formfield_overrides = {
+        models.CharField: {'widget': TextInput(attrs={'size':118})}
+    }
+
 
 class InstanceRequestAdmin(ButtonableModelAdmin):
     list_display = ('id', 'user', 'agency', 'submit_date', 'state', 'otp_version', 'deployment_host', 'email_link')
     list_filter = ('state', 'submit_date')
     actions = [accept_instance_request, reject_instance_request, rebuild_instance_request]
-    readonly_fields = ('state', 'submit_date', 'decision_date', 'ip', 'otp_version')
+    readonly_fields = ('user', 'state', 'submit_date', 'decision_date', 'ip', 'otp_version', 'graph_url', 'public_url', 'admin_password')
+    fields = ('submit_date', 'user', 'agency', 'comments', 'fare_factory', 'state', 'data_key', 'graph_key', 'public_url', 'graph_url', 'admin_password', 'otp_version', 'deployment_host')
 
     inlines = [
         GtfsFileInline,
@@ -108,15 +116,15 @@ class InstanceRequestAdmin(ButtonableModelAdmin):
         html = "<script type=\"text/javascript\">"
         html += "function open_email_window_%s() {" % obj.id
         html += "    myWindow=window.open('','','width=800,height=300');"
-        html += "    myWindow.document.write('<div style=\"font-family:sans-serif; font-size:12px;\">');"
+        html += "    myWindow.document.write('<div style=\"font-family:sans-serif; font-size:13px;\">');"
         html += "    myWindow.document.write('To: %s<br>');" % obj.user.email
-        html += "    myWindow.document.write('Subject: Your OTP Deployer Request for %s');" % obj.agency
-        html += "    myWindow.document.write('<p>This email is regarding the OTP Deployer request you submitted for \"%s\" on %s. ');" % (obj.agency, obj.submit_date.strftime("%B %d")) 
-        html += "    myWindow.document.write('The OTP instance has been deployed at:<br>%s');" % obj.public_url
-        html += "    myWindow.document.write('<p>This instance will remain online for the following week. Please contact us if you would like to discuss longer-term hosting options.');"         
-        html += "    myWindow.document.write('<p>Additionally, the graph file can be downloaded directly at:<br>%s');" % obj.graph_url
-        html += "    myWindow.document.write('<p>Thank you for your interest in OTP and please let me know if you have any questions.');"
-        html += "    myWindow.document.write('/<div>');"
+        html += "    myWindow.document.write('Subject: Your OTP Deployer Request for %s<br><br>');" % obj.agency
+        html += "    myWindow.document.write('This email is regarding the OTP Deployer request you submitted for \"%s\" on %s. ');" % (obj.agency, obj.submit_date.strftime("%B %d")) 
+        html += "    myWindow.document.write('The OTP instance has been deployed at:<br>%s<br><br>');" % obj.public_url
+        html += "    myWindow.document.write('This instance will remain online for the following week. Please contact us if you would like to discuss longer-term hosting options.<br><br>');"         
+        html += "    myWindow.document.write('Additionally, the graph file can be downloaded directly at:<br>%s<br><br>');" % obj.graph_url
+        html += "    myWindow.document.write('Thank you for your interest in OTP and please let me know if you have any questions.');"
+        html += "    myWindow.document.write('</div>');"
         html += "    myWindow.focus();"
         html += "}"
         html += "</script>"
@@ -125,6 +133,9 @@ class InstanceRequestAdmin(ButtonableModelAdmin):
     email_link.short_description = "email link"
     email_link.allow_tags = True
 
+    formfield_overrides = {
+        models.CharField: {'widget': TextInput(attrs={'size':118})}
+    }
 
     def approve_or_reject_buttons(self, request=None, object_id=None):
         if request is None:
@@ -213,3 +224,4 @@ class DeploymentHostAdmin(admin.ModelAdmin):
     actions = [launch_deployment_host, update_memory]
 
 admin.site.register(DeploymentHost, DeploymentHostAdmin)
+
