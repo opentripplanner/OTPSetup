@@ -75,6 +75,12 @@ class GtfsFile(models.Model):
     transload_url = models.CharField(max_length=200, null=True)
     validation_output = models.TextField(max_length=20000, null=True, blank=True)
 
+    def validation_output_str(self):
+        if(self.validation_output == None):
+            return "(None)"
+        return "<textarea rows=8 cols=85>%s</textarea>" % self.validation_output
+    validation_output_str.allow_tags = True
+
 class InstanceRequestForm(ModelForm):
     fare_factory = RegexField(label="Fare model", max_length=200, 
                              regex=r'^[\w.]+')
