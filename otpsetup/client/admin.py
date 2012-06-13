@@ -25,7 +25,8 @@ def accept_instance_request(modeladmin, request, queryset):
     for irequest in queryset:
         if irequest.state != 'approved':
             files = [gtfsfile.s3_key for gtfsfile in irequest.gtfsfile_set.all()]
-            publisher.publish({"files": files, "request_id" : irequest.id, "fare_factory" : irequest.fare_factory})
+            extra_props = [gtfsfile.extra_properties for gtfsfile in irequest.gtfsfile_set.all()]
+            publisher.publish({"files": files, "extra_properties" : extra_props, "request_id" : irequest.id, "fare_factory" : irequest.fare_factory})
 
     if hasattr(queryset, 'update'):
         queryset.update(state='accepted', decision_date=datetime.now())

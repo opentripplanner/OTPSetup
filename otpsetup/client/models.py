@@ -74,6 +74,7 @@ class GtfsFile(models.Model):
     s3_key = models.CharField(max_length=200, null=True, db_index=True)
     transload_url = models.CharField(max_length=200, null=True)
     validation_output = models.TextField(max_length=20000, null=True, blank=True)
+    extra_properties = models.TextField(max_length=2000, null=True, blank=True)
 
     def validation_output_str(self):
         if(self.validation_output == None):

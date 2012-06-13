@@ -77,7 +77,10 @@ def create_instance(conn, body):
         # extract gtfs files
         os.makedirs(os.path.join(directory, 'gtfs'))
         files = body['files']
+        extra_props_list = body['extra_properties']
+        extra_props_dict = { }
         out = []
+        i = 0
         for s3_id in files:
             print "id: " + s3_id
         
@@ -89,9 +92,12 @@ def create_instance(conn, body):
             path = os.path.join(directory, 'gtfs', basename)
             
             key.get_contents_to_filename(path)        
+
+            extra_props_dict[basename] = extra_props_list[i]
+            i += 1
        
         # prepare and run graph builder
-        builder.prepare_graph_builder(directory, body['fare_factory'])
+        builder.prepare_graph_builder(directory, body['fare_factory'], extra_props_dict)
         gbresults = builder.run_graph_builder(directory)
                 
         print "finished gb: %s" % gbresults['success']

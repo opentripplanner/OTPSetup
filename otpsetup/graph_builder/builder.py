@@ -41,7 +41,7 @@ def ned_available(polyfilename):
     return all_exist
 
 
-def prepare_graph_builder(workingdir, fare_factory):
+def prepare_graph_builder(workingdir, fare_factory, extra_props_dict):
 
     # copy stop files to single directory
 
@@ -98,6 +98,10 @@ def prepare_graph_builder(workingdir, fare_factory):
     for item in gtfsdirlist:
         gtfslist += '                        <bean class="org.opentripplanner.graph_builder.model.GtfsBundle">\n'
         gtfslist += '                            <property name="path" value="'+os.path.join(workingdir, 'gtfs', item)+'" />\n'
+
+        if(extra_props_dict[item] != None):
+            gtfslist += extra_props_dict[item]
+        
         gtfslist += '                        </bean>\n'
 
     if use_ned:
