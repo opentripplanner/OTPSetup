@@ -4,10 +4,11 @@ from datetime import datetime
 from django.conf import settings
 from django.contrib import admin
 from django.db import models
-from django.forms import TextInput
+from django.forms import TextInput, Textarea
 from kombu import Exchange
 from models import InstanceRequest, AmazonMachineImage, GtfsFile
 import urllib2, sys, time
+
 
 from otpsetup.client.lib.buttonable_model_admin import ButtonableModelAdmin
 from otpsetup.client.models import InstanceRequest, GtfsFile, DeploymentHost
