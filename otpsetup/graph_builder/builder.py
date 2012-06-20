@@ -69,7 +69,7 @@ def prepare_graph_builder(workingdir, fare_factory, extra_props_dict):
 
     # run osm extract
 
-    extractfile = os.path.join(workingdir, '/extract.osm')
+    extractfile = os.path.join(workingdir, 'extract.osm')
     cmd = os.path.join(osmosisdir,'bin/osmosis')+' --rb '+settings.PLANET_OSM_PATH+' --bounding-polygon file='+polyfile+' --wx '+extractfile + "-tmp"
     os.system(cmd)
     
