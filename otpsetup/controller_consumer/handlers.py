@@ -103,6 +103,7 @@ def rebuild_graph_done(conn, body):
 
         irequest.state = "graph_built"
         irequest.graph_key = graph_key
+        irequest.data_key = body['data_key']
         irequest.graph_url = "http://deployer.opentripplanner.org/download_graph?key=%s" % base64.b64encode(graph_key[8:])
         irequest.otp_version = body['otp_version']
         irequest.save()
