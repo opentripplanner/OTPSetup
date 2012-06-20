@@ -9,6 +9,7 @@ osmosisdir = os.path.join(settings.GRAPH_BUILDER_RESOURCE_DIR, 'osmosis')
 osmfilterdir = os.path.join(settings.GRAPH_BUILDER_RESOURCE_DIR, 'osmfilter')
 osmtoolsdir = os.path.join(settings.GRAPH_BUILDER_RESOURCE_DIR, 'osmtools')
 otpgbdir = os.path.join(settings.GRAPH_BUILDER_RESOURCE_DIR, 'otpgb')
+nedcachedir = '/mnt/nedcache'
 
 def ned_available(polyfilename):
 
@@ -85,8 +86,6 @@ def prepare_graph_builder(workingdir, fare_factory, extra_props_dict):
 
     if use_ned:
         templatefile = open(os.path.join(templatedir, 'gb_ned.xml'), 'r')
-        nedcachedir = os.path.join('/mnt/nedcache')
-        if not os.path.exists(nedcachedir): os.makedirs(nedcachedir)    
     else:
         templatefile = open(os.path.join(templatedir, 'gb_no_ned.xml'), 'r')
 
@@ -120,6 +119,7 @@ def run_graph_builder(workingdir):
 
     gbfilepath = os.path.join(workingdir, 'gb.xml')
     otpjarpath = os.path.join(otpgbdir, 'graph-builder.jar')
+    if not os.path.exists(nedcachedir): os.makedirs(nedcachedir) 
 
     result = subprocess.Popen(["java", "-Xms14G", "-Xmx14G", "-jar", otpjarpath, gbfilepath], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     
