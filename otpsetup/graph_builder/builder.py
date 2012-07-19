@@ -55,7 +55,7 @@ def prepare_graph_builder(workingdir, fare_factory, extra_props_dict):
         subprocess.call(['unzip', os.path.join(workingdir, 'gtfs', item), '-d', os.path.join(workingdir, 'gtfs', item[:-4])])
         stopsfile = os.path.join(workingdir, 'gtfs', item[:-4], 'stops.txt')
         if os.path.isfile(stopsfile):
-            subprocess.call(['unzip', os.path.join(workingdir, 'gtfs', item), '-d', os.path.join(workingdir, 'gtfs', item[:-4])])
+            subprocess.call(['cp', stopsfile, os.path.join(stopsdir, item+'_stops.txt')])
         else:
             print 'WARNING: could not find stops.txt file for "'+item+'" GTFS feed'
 
