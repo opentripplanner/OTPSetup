@@ -113,9 +113,10 @@ class InstanceRequestAdmin(ButtonableModelAdmin):
     ]
 
     def email_link(self, obj):
-        if(obj.graph_url == None or obj.public_url == None):
+        if(obj.graph_key == None or obj.public_url == None):
             return "N/A"
-
+        graph_url = "https://s3.amazonaws.com/%s" % urllib2.quote(obj.graph_key)
+        
         html = "<script type=\"text/javascript\">"
         html += "function open_email_window_%s() {" % obj.id
         html += "    myWindow=window.open('','','width=800,height=300');"
@@ -125,7 +126,7 @@ class InstanceRequestAdmin(ButtonableModelAdmin):
         html += "    myWindow.document.write('This email is regarding the OTP Deployer request you submitted for \"%s\" on %s. ');" % (obj.agency, obj.submit_date.strftime("%B %d")) 
         html += "    myWindow.document.write('The OTP instance has been deployed at:<br>%s<br><br>');" % obj.public_url
         html += "    myWindow.document.write('This instance will remain online for the following week. Please contact us if you would like to discuss longer-term hosting options.<br><br>');"         
-        html += "    myWindow.document.write('Additionally, the graph file can be downloaded directly at:<br>%s<br><br>');" % obj.graph_url
+        html += "    myWindow.document.write('Additionally, the graph file can be downloaded directly at:<br>%s<br><br>');" % graph_url
         html += "    myWindow.document.write('Thank you for your interest in OTP and please let me know if you have any questions.');"
         html += "    myWindow.document.write('</div>');"
         html += "    myWindow.focus();"

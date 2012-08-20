@@ -113,6 +113,7 @@ def create_instance(conn, body):
             key.key = "uploads/%s/Graph_%s.obj" % (body['request_id'], datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S"))
             graph_file = os.path.join(directory,'Graph.obj')
             key.set_contents_from_filename(graph_file)
+            key.set_acl('public-read')
             msgparams['key'] = key.key
             subprocess.call(['rm', graph_file])
             
@@ -171,6 +172,7 @@ def rebuild_graph(conn, body):
             key.key = "uploads/%s/Graph_%s.obj" % (body['request_id'], datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S"))
             graph_file = os.path.join(directory,'Graph.obj')
             key.set_contents_from_filename(graph_file)
+            key.set_acl('public-read')
             msgparams['key'] = key.key
             subprocess.call(['rm', graph_file])
             
