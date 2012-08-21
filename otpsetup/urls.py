@@ -19,5 +19,7 @@ urlpatterns = patterns('',
     url(r'^admin/doc/', include('django.contrib.admindocs.urls')),
     url(r'^admin/', include(admin.site.urls)),
     url(r'^manage_ec2/', include(client_urls)),
+
+    url(r'^api_access', 'django.views.generic.simple.direct_to_template', {'template': 'api_access.html'}),
 )
 

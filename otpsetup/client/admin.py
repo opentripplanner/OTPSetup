@@ -126,7 +126,10 @@ class InstanceRequestAdmin(ButtonableModelAdmin):
         html += "    myWindow.document.write('This email is regarding the OTP Deployer request you submitted for \"%s\" on %s. ');" % (obj.agency, obj.submit_date.strftime("%B %d")) 
         html += "    myWindow.document.write('The OTP instance has been deployed at:<br>%s<br><br>');" % obj.public_url
         html += "    myWindow.document.write('This instance will remain online for the following week. Please contact us if you would like to discuss longer-term hosting options.<br><br>');"         
-        html += "    myWindow.document.write('Additionally, the graph file can be downloaded directly at:<br>%s<br><br>');" % graph_url
+        html += "    myWindow.document.write('Additionally, the graph file can be downloaded directly at:<br>%s<br>');" % graph_url
+        html += "    myWindow.document.write('The graph file was built with OTP version %s.<br><br>');" % obj.otp_version
+        html += "    myWindow.document.write('If you need API access, visit http://deployer.opentripplanner.org/api_access for instructions. Your request ID is: <b>req-%s</b><br>');" % obj.id 
+        html += "    myWindow.document.write('The username / password for authenticated API calls is: admin / %s<br><br>');" % obj.admin_password
         html += "    myWindow.document.write('Thank you for your interest in OTP and please let me know if you have any questions.');"
         html += "    myWindow.document.write('</div>');"
         html += "    myWindow.focus();"

@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+
+{% block title %}API Access{% endblock %}
+
+{% block content %}
+
+Direct access to the <a href="http://www.opentripplanner.org/apidoc/">RESTful API</a> is possible with OTP Deployer, but is somewhat non-intuitive
+since we are hosting multiple deployments on a single AWS instance using OTP's <a
+href="https://github.com/openplans/OpenTripPlanner/wiki/MultipleGraphs">multiple graph support</a>.
+
+<p>To make API calls to your preview deployment, you must specify the "routerId" API parameter so that OTP knows which graph to use. The email you
+received regarding your deployment should have indicated this ID, which is used both to access the host server and to specify the graph. For
+example, a call to your graph metadata would be structured as follows (replace both instances of [request_id] with the id you were provided):
+
+<p><code>http://[request_id].deployer.opentripplanner.org/opentripplanner-api-webapp/ws/metadata?routerId=[request_id]</code>
+
+<p>Note that some API calls require user authentication. The username/password for your instance should have been included in the deployment
+email.
+
+<p>We do ask that you refrain from using the hosted API for automated batch queries (i.e. hundreds or thousands of calls in rapid succession) as
+this will have a noticeable effect on performance for other deployments that share the host. If you'd like to do batch processing with OTP, please
+<a href="mailto:opentrip@openplans.org">contact us</a> to discuss options for high-volume deployments.
+
+{% endblock %}
+
