@@ -82,6 +82,9 @@ def create_instance(conn, body):
         out = []
         i = 0
         for s3_id in files:
+            if s3_id is None:
+                continue
+
             print "id: " + s3_id
         
             bucket = gtfs_bucket()
