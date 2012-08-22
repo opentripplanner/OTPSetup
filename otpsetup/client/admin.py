@@ -115,7 +115,7 @@ class InstanceRequestAdmin(ButtonableModelAdmin):
     def email_link(self, obj):
         if(obj.graph_key == None or obj.public_url == None):
             return "N/A"
-        graph_url = "https://s3.amazonaws.com/%s" % urllib2.quote(obj.graph_key)
+        graph_url = "https://s3.amazonaws.com/otp-graphs/%s" % urllib2.quote(obj.graph_key)
         
         html = "<script type=\"text/javascript\">"
         html += "function open_email_window_%s() {" % obj.id
