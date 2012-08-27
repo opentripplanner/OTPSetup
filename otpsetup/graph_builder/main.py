@@ -1,8 +1,7 @@
 #!/usr/bin/python
 
-from kombu import Exchange, Queue
 from otpsetup.shortcuts import DjangoBrokerConnection
-from otpsetup.shortcuts import stop_current_instance
+from otpsetup.shortcuts import stop_current_instance, build_multi_queue
 from otpsetup import settings
 from datetime import datetime
 import traceback
@@ -11,12 +10,7 @@ import handlers
 
 print "Starting Graph Builder Consumer"
 
-exchange = Exchange("amq.direct", type="direct", durable=True)
-
-queues = [
-    Queue("create_instance", exchange=exchange, routing_key="create_instance"),
-    Queue("rebuild_graph", exchange=exchange, routing_key="rebuild_graph")
-]
+queues = build_multi_queue(["create_instance", "rebuild_graph"])
 
 def handle(conn, body, message):
     

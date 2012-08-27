@@ -1,4 +1,4 @@
-from kombu import BrokerConnection
+from kombu import BrokerConnection, Exchange, Queue
 
 from django.conf import settings
 from django.shortcuts import render_to_response as orig_render_to_response
@@ -90,4 +90,14 @@ def get_instance_id():
                 instance_id = instance.id
 
     return instance_id
+    
+def build_multi_queue(keys):
+    queues = [] 
+    exchange = Exchange("amq.direct", type="direct", durable=True)
+
+    for key in keys:
+        queues.append(Queue(key, exchange=exchange, routing_key=key))
+        
+    return queues
+    
 
