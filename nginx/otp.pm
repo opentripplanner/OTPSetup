@@ -1,14 +1,14 @@
 package otp;
-#use nginx;
+use nginx;
 use Data::Dumper;
 use JSON;
-use LWP::Simple;
+use LWP::UserAgent;
 use POSIX qw(ceil floor);
 use strict;
 use warnings;
 
 my @regions;
-    my @urls = ('http://localhost:8080/opentripplanner-api-webapp/ws', );
+    my @urls = ('http://localhost:8080/opentripplanner-api-webapp', );
 
 sub init {
     #load up a list of server domains, which it would be nice to get from
@@ -107,19 +107,21 @@ sub index_coords {
 
 sub load_server_data {
     my $url = shift;
-    my $rurl = $url . '/routers';
-    my $content = get $rurl;#, 'Accept' => 'text/json';
+    my $rurl = $url . '/ws/routers';
+    my $ua = LWP::UserAgent->new;
+    my $content = $ua->get ($rurl, 'Accept' => 'application/json')->decoded_content;
     my $json = decode_json $content;
     my $items = $json->{'routerInfo'};
     ROUTER: for my $router(@$items) {
-        my $coords = $router->{'RouterInfo'}->{'polygon'}->{'coordinates'};
+        my $routerInfo = $router->{'RouterInfo'};
+        my $coords = $routerInfo->{'polygon'}->{'coordinates'};
         #coords is a list of lists of 2-element lists; we would like to check it
         #against the existing regions
         for my $oldregion (@regions) {
 
             if ($oldregion->{'poly'} ~~ $coords) {
                 my $newrouter = {'url' => $url, 
-                                 'routerId' => $router->{'id'}};
+                                 'routerId' => $routerInfo->{'routerId'}};
                 push @{$oldregion->{'routers'}}, $newrouter;
                 next ROUTER;
             }
@@ -131,7 +133,7 @@ sub load_server_data {
             'poly' => $coords, 
             'bbox' => $bbox,
             'routers'=>[{'url' => $url,
-                         'routerId' => $router->{'id'}}]};
+                         'routerId' => $routerInfo->{'routerId'}}]};
 
         push @regions, $newrouter;
 
@@ -171,8 +173,10 @@ sub get_region {
     }
 }
 
-sub get_region_indexed {
+sub get_regions_indexed {
     my ($lat, $lon) = @_;
+
+    my @output = ();
 
     for my $region (@regions) {
       my $bbox = $region->{'bbox'};
@@ -201,17 +205,18 @@ sub get_region_indexed {
           }
       }
       if ($crossings % 2 == 1) {
-          #return $region;
-          print Dumper $region->{'routers'}
+          push @output, $region;
       }
     }
+
+    return @output;
 }
 
 
 sub test {
     init();
     print "nonindexed: " . get_region(41.5, -73.1) . "\n";
-    print "indexed: " . get_region_indexed(45.5, -122.91) . "\n";
+    print "indexed: " . get_regions_indexed(45.5, -122.91) . "\n";
 }
 
 sub handler {
@@ -219,7 +224,7 @@ sub handler {
 
   if ($r->header_only) {
       $r->send_http_header("text/html");
-      #return OK;
+      return nginx::OK;
   }
   
   if (!@regions) {
@@ -231,28 +236,47 @@ sub handler {
   foreach my $pair (@query){
       my ($arg, $value) = split(/=/, $pair);
       $value =~ s/%([a-fA-F0-9][a-fA-F0-9])/pack("C", hex($1))/eg;
-      $args{$arg} = $value; 
+      $args{$arg} = $value;
   }
-
 
   my $from = $args{'fromPlace'};
   $from =~ s/^(.*):://;
 
   my ($lat,$lon) = split /,/, $from;
 
-  my $region = get_region_indexed($lat, $lon);
+  my @from_regions = get_regions_indexed($lat, $lon);
 
-  if ($region) {
+  my $to = $args{'toPlace'};
+  $to =~ s/^(.*):://;
+
+  ($lat,$lon) = split /,/, $to;
+
+  my @to_regions = get_regions_indexed($lat, $lon);
+
+  my $found = 0;
+  for my $region (@from_regions) {
+      if (! grep($region, @to_regions)) {
+          #consider only regions in both from & to region sets
+          next;
+      }
       my $nrouters = scalar @{$region->{'routers'}};
       my $router = $region->{'routers'}->[int(rand($nrouters))];
-      my $url = $router->{url} . '?'. $r->args . "&routerId=" . $router->{routerId};
-      $r->send_http_header("text/html"); 
-      $r->print($url);
-  } else {
+      my $url = $router->{url} . "/ws/plan" . '?'. $r->args . "&routerId=" . $router->{'routerId'};
+      #$r->send_http_header("text/html"); 
+      $r->status(301);
+      $r->header_out("Location",  $url);
+      $r->send_http_header();
+      warn("Redirect : " . $url);
+      $found = 1;
+      last;
+  } 
+
+  if (!$found) {
       $r->send_http_header("text/html");
       $r->print("$lat, $lon is out of range; ");
+      $r->rflush;
   }
-  #return OK;
+  return nginx::OK;
 }
  
 1;
