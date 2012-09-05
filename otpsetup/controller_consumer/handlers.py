@@ -4,10 +4,10 @@ from boto import connect_ec2
 from kombu import Exchange
 from django.core.mail import send_mail
 from django.core.urlresolvers import reverse
-from otpsetup.client.models import InstanceRequest, GtfsFile, DeploymentHost
+from otpsetup.client.models import InstanceRequest, GtfsFile, DeploymentHost, ManagedDeployment
 from otpsetup import settings
 
-import base64
+import base64, datetime
 
 exchange = Exchange("amq.direct", type="direct", durable=True)
 
@@ -40,8 +40,6 @@ def graph_done(conn, body):
 
     request_id = body['request_id']
     success = body['success']
-
-
 
     irequest = InstanceRequest.objects.get(id=request_id)
 
@@ -89,6 +87,26 @@ Request ID: %s
 """ % (request_id),
             settings.DEFAULT_FROM_EMAIL,
             settings.ADMIN_EMAILS, fail_silently=False)
+
+
+def osm_extract_done(conn, body):
+    
+    man_dep = ManagedDeployment.objects.get(id = body['id'])
+    man_dep.osm_key = body['osm_key']
+    man_dep.save()
+
+
+def managed_graph_done(conn, body):
+
+    man_dep = ManagedDeployment.objects.get(id = body['id'])
+
+    if body['success']:
+
+        man_dep.last_graph_key = body['graph_key']
+        man_dep.otp_version = body['otp_version']
+        man_dep.last_rebuilt = datetime.datetime.now()
+        man_dep.last_config = body['config']
+        man_dep.save()
 
 
 def rebuild_graph_done(conn, body):

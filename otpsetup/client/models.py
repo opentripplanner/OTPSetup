@@ -69,6 +69,14 @@ class InstanceRequest(models.Model):
         super(InstanceRequest, self).save(force_insert, force_update)
         self.__original_dephost = self.deployment_host
 
+class ManagedDeployment(models.Model):
+    source = models.CharField(max_length=15)
+    otp_version = models.CharField(max_length=20, null=True, blank=True)
+    osm_key = models.CharField(max_length=200, null=True)
+    last_graph_key = models.CharField(max_length=60, null=True, blank=True)
+    last_rebuilt = models.DateTimeField('last rebuilt', null=True)
+    last_config = models.TextField(max_length=10000, null=True, blank=True)
+
 class GtfsFile(models.Model):
     instance_request = models.ForeignKey(InstanceRequest)
     s3_key = models.CharField(max_length=200, null=True, db_index=True)

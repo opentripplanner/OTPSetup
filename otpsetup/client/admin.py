@@ -6,7 +6,7 @@ from django.contrib import admin
 from django.db import models
 from django.forms import TextInput, Textarea
 from kombu import Exchange
-from models import InstanceRequest, AmazonMachineImage, GtfsFile
+from models import InstanceRequest, AmazonMachineImage, GtfsFile, ManagedDeployment
 import urllib2, sys, time
 
 
@@ -115,7 +115,7 @@ class InstanceRequestAdmin(ButtonableModelAdmin):
     def email_link(self, obj):
         if(obj.graph_key == None or obj.public_url == None):
             return "N/A"
-        graph_url = "https://s3.amazonaws.com/otp-graphs/%s" % urllib2.quote(obj.graph_key)
+        graph_url = "https://s3.amazonaws.com/%s" % urllib2.quote(obj.graph_key)
         
         html = "<script type=\"text/javascript\">"
         html += "function open_email_window_%s() {" % obj.id
@@ -223,7 +223,7 @@ def update_memory(modeladmin, request, queryset):
         except:
             sys.stderr.write("warning: memory utilization for deployment host % could not be accessed" % dephost.id)
 
-update_memory.short_description = "Update memory utilization"
+    actions = [launch_deployment_host, update_memory]
 
 class DeploymentHostAdmin(admin.ModelAdmin):
     list_display = ('id', 'name', 'instance_id', 'host_ip', 'otp_version', 'total_memory', 'free_memory')
@@ -231,4 +231,10 @@ class DeploymentHostAdmin(admin.ModelAdmin):
     actions = [launch_deployment_host, update_memory]
 
 admin.site.register(DeploymentHost, DeploymentHostAdmin)
+
+class ManagedDeploymentAdmin(admin.ModelAdmin):
+    list_display = ('id', 'source', 'otp_version', 'last_rebuilt')
+    readonly_fields = ('otp_version', 'last_rebuilt')
+
+admin.site.register(ManagedDeployment, ManagedDeploymentAdmin)
 

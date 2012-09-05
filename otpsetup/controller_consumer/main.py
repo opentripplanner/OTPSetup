@@ -1,7 +1,7 @@
 #!/usr/bin/python
 
 from kombu import Exchange, Queue
-from otpsetup.shortcuts import DjangoBrokerConnection
+from otpsetup.shortcuts import DjangoBrokerConnection, build_multi_queue
 from otpsetup import settings
 from datetime import datetime
 import traceback
@@ -10,17 +10,7 @@ import handlers
 
 print "Starting Controller Consumer"
 
-exchange = Exchange("amq.direct", type="direct", durable=True)
-
-queues = [
-    Queue("validation_done", exchange=exchange, routing_key="validation_done"),
-    Queue("graph_done", exchange=exchange, routing_key="graph_done"),
-    Queue("rebuild_graph_done", exchange=exchange, routing_key="rebuild_graph_done"),
-    Queue("deployment_ready", exchange=exchange, routing_key="deployment_ready"),
-    Queue("proxy_done", exchange=exchange, routing_key="proxy_done"),
-    Queue("multideployer_ready", exchange=exchange, routing_key="multideployer_ready"),
-    Queue("multideployment_done", exchange=exchange, routing_key="multideployment_done")
-]
+queues = build_multi_queue(["validation_done", "graph_done", "rebuild_graph_done", "managed_graph_done", "osm_extract_done", "deployment_ready", "proxy_done", "multideployer_ready", "multideployment_done"])
 
 def handle(conn, body, message):
     

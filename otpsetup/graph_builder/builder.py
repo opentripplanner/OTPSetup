@@ -42,7 +42,7 @@ def ned_available(polyfilename):
     return all_exist
 
 
-def prepare_graph_builder(workingdir, fare_factory, extra_props_dict):
+def generate_osm_extract_polygon(workingdir):
 
     # copy stop files to single directory
 
@@ -52,8 +52,11 @@ def prepare_graph_builder(workingdir, fare_factory, extra_props_dict):
     gtfsdirlist = os.listdir(os.path.join(workingdir, "gtfs"))
 
     for item in gtfsdirlist:
-        subprocess.call(['unzip', os.path.join(workingdir, 'gtfs', item), '-d', os.path.join(workingdir, 'gtfs', item[:-4])])
-        stopsfile = os.path.join(workingdir, 'gtfs', item[:-4], 'stops.txt')
+        
+        gtfsfeeddir = os.path.join(workingdir, 'gtfs', item[:-4])
+        print "item=%s, dir=%s" % (item, gtfsfeeddir)
+        subprocess.call(['unzip', os.path.join(workingdir, 'gtfs', item), '-d', gtfsfeeddir])
+        stopsfile = os.path.join(gtfsfeeddir, 'stops.txt')
         if os.path.isfile(stopsfile):
             subprocess.call(['cp', stopsfile, os.path.join(stopsdir, item+'_stops.txt')])
         else:
@@ -67,6 +70,12 @@ def prepare_graph_builder(workingdir, fare_factory, extra_props_dict):
     cmd = 'java -jar %s %s %s %s' % (os.path.join(osmtoolsdir, 'osmtools.jar'), stopsdir, polyfile, boundsfile)
     os.system(cmd)
 
+def generate_osm_extract(workingdir):
+
+    polyfile = os.path.join(workingdir, 'extract_poly.txt')
+    if(not os.path.isfile(polyfile)):
+        generate_osm_extract_polygon(workingdir)
+
     # run osm extract
 
     extractfile = os.path.join(workingdir, 'extract.osm')
@@ -79,9 +88,17 @@ def prepare_graph_builder(workingdir, fare_factory, extra_props_dict):
     cmd = os.path.join(osmfilterdir, 'osmfilter --keep-ways="highway= platform=" --keep-relations="(type=multipolygon and area=yes) or type=restriction or (type=route and route=road) or type=level_map" --keep-nodes= ' + extractfile + '-tmp -o=' + extractfile)
     os.system(cmd)
     os.unlink(extractfile + "-tmp")
+    
+
+def generate_graph_config(workingdir, fare_factory, extra_props_dict):
+
+    polyfile = os.path.join(workingdir, 'extract_poly.txt')
+    if(not os.path.isfile(polyfile)):
+        generate_osm_extract_polygon(workingdir)
 
     # generate graph-builder config file
     use_ned = settings.NED_ENABLED and ned_available(polyfile)
+    extractfile = os.path.join(workingdir, 'extract.osm')
 
     if use_ned:
         templatefile = open(os.path.join(templatedir, 'gb_ned.xml'), 'r')
@@ -91,9 +108,11 @@ def prepare_graph_builder(workingdir, fare_factory, extra_props_dict):
     gbxml = templatefile.read()
     templatefile.close()
 
-
     gtfslist = ''
+    gtfsdirlist = os.listdir(os.path.join(workingdir, "gtfs"))
     for item in gtfsdirlist:
+        if os.path.isdir(os.path.join(workingdir, "gtfs", item)):
+            continue
         gtfslist += '                        <bean class="org.opentripplanner.graph_builder.model.GtfsBundle">\n'
         gtfslist += '                            <property name="path" value="'+os.path.join(workingdir, 'gtfs', item)+'" />\n'
 
@@ -112,6 +131,51 @@ def prepare_graph_builder(workingdir, fare_factory, extra_props_dict):
     gbfile.write(gbxml)
     gbfile.close()
 
+def generate_graph_config_managed(workingdir, config):
+
+    print "gen managed gb.xml"
+
+    polyfile = os.path.join(workingdir, 'extract_poly.txt')
+    if(not os.path.isfile(polyfile)):
+        generate_osm_extract_polygon(workingdir)
+
+
+    # generate graph-builder config file
+    use_ned = settings.NED_ENABLED and ned_available(polyfile)
+    extractfile = os.path.join(workingdir, 'extract.osm')
+    fare_factory = 'org.opentripplanner.routing.impl.DefaultFareServiceFactory'
+
+    if use_ned:
+        templatefile = open(os.path.join(templatedir, 'gb_ned.xml'), 'r')
+    else:
+        templatefile = open(os.path.join(templatedir, 'gb_no_ned.xml'), 'r')
+
+    gbxml = templatefile.read()
+    templatefile.close()
+
+    gtfslist = ''
+    for feed in config['feeds']:
+        print " - %s" % feed['feedId']
+        gtfslist += '                        <bean class="org.opentripplanner.graph_builder.model.GtfsBundle">\n'
+        gtfslist += '                            <property name="path" value="'+os.path.join(workingdir, 'gtfs', '%s.zip' % feed['feedId'])+'" />\n'
+        if 'defaultAgencyId' in feed:
+            gtfslist += '                            <property name="defaultAgencyId" value="'+feed['defaultAgencyId']+'" />\n'
+        #if 'defaultBikesAllowed' in feed:
+        #    gtfslist += '                            <property name="defaultBikesAllowed" value="'+feed['defaultBikesAllowed']+'" />\n'
+
+        gtfslist += '                        </bean>\n'
+
+    if use_ned:
+        gbxml = gbxml.format(graphpath=workingdir, gtfslist=gtfslist, osmpath=extractfile, nedcachepath=nedcachedir, awsaccesskey=settings.AWS_ACCESS_KEY_ID, awssecretkey=settings.AWS_SECRET_KEY, fare_factory=fare_factory)
+    else:
+        gbxml = gbxml.format(graphpath=workingdir, gtfslist=gtfslist, osmpath=extractfile, fare_factory=fare_factory)
+
+    gbfilepath = os.path.join(workingdir, 'gb.xml')
+    gbfile = open(gbfilepath, 'w')
+    gbfile.write(gbxml)
+    gbfile.close()
+
+
 
 def run_graph_builder(workingdir):
     print 'running OTP graph builder'
@@ -120,7 +184,7 @@ def run_graph_builder(workingdir):
     otpjarpath = os.path.join(otpgbdir, 'graph-builder.jar')
     if not os.path.exists(nedcachedir): os.makedirs(nedcachedir) 
 
-    result = subprocess.Popen(["java", "-Xms14G", "-Xmx14G", "-jar", otpjarpath, gbfilepath], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    result = subprocess.Popen(["java", "-Xms4G", "-Xmx4G", "-jar", otpjarpath, gbfilepath], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     
     gb_stdout = result.stdout.read()
     gb_stderr = result.stderr.read()
@@ -134,5 +198,7 @@ def run_graph_builder(workingdir):
     results['success'] = graphsuccess
     results['output'] = gb_output 
     
+    print "gb complete"
+    print gb_output
     return results
 

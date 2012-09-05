@@ -10,7 +10,7 @@ import handlers
 
 print "Starting Graph Builder Consumer"
 
-queues = build_multi_queue(["create_instance", "rebuild_graph"])
+queues = build_multi_queue(["create_instance", "rebuild_graph", "build_managed", "build_managed_osm"])
 
 def handle(conn, body, message):
     
@@ -36,6 +36,6 @@ with DjangoBrokerConnection() as conn:
             print "exited loop"            
     conn.close()
             
-stop_current_instance()
+#stop_current_instance()
 
 

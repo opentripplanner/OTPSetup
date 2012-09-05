@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-from otpsetup.client.models import InstanceRequestForm, InstanceRequest, GtfsFile
+from otpsetup.client.models import InstanceRequestForm, InstanceRequest, GtfsFile, ManagedDeployment
 from datetime import datetime, timedelta
 from subprocess import call
 
@@ -12,7 +12,7 @@ from django.http import HttpResponse
 from boto import connect_s3
 from boto.s3.key import Key
 
-from json import dumps
+from json import dumps, loads
 from kombu import Exchange
 
 from otpsetup.shortcuts import render_to_response
@@ -48,6 +48,38 @@ def download_graph(request):
         response = HttpResponse(graph_file, mimetype='application/x-zip-compressed')
         response['Content-Disposition'] = 'attachment; filename=Graph.zip' 
         return response
+
+def build_deployment(request):
+    try:
+        data = loads(request.REQUEST['data'])
+    except KeyError:
+        return HttpResponse("You must provide build data")
+    
+    html = ""
+    if 'metroId' in data:
+        html = html + 'metroId=%s<br>' % data['metroId']
+        source = 'metro-%s' % data['metroId']
+        osm_key = None 
+        try:
+            man_dep = ManagedDeployment.objects.get(source=source)
+            osm_key = "%s.osm" % man_dep.id
+            html = html + "exists<br>"
+        except ManagedDeployment.DoesNotExist:
+            html = html + "does not exist<br>"
+            man_dep = ManagedDeployment(source=source)
+            man_dep.save()
+            html = html + "created record<br>"
+ 
+        exchange = Exchange("amq.direct", type="direct", durable=True)
+        conn = DjangoBrokerConnection()
+
+        publisher = conn.Producer(routing_key="build_managed", exchange=exchange)
+        publisher.publish({'id' : man_dep.id, 'config' : request.REQUEST['data'], 'osm_key' : osm_key})
+        html = html + 'published build_managed message<br>' 
+
+    else:
+        html = html + 'no metroId<br>' 
+    return HttpResponse(html)
 
 @login_required
 def create_request(request):

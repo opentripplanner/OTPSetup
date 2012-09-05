@@ -8,6 +8,7 @@ urlpatterns = patterns('',
 
     url(r'^$', 'otpsetup.client.views.index', name='index'),
     url(r'^create_request$', 'otpsetup.client.views.create_request', name='create_request'),
+    url(r'^build$', 'otpsetup.client.views.build_deployment', name='build_deployment'),
     url(r'^upload$', 'otpsetup.client.views.upload', name='upload'),
     url(r'^transload$', 'otpsetup.client.views.transload', name='transload'),
     url(r'^done_upload$', 'otpsetup.client.views.done_upload', name='done_upload'),

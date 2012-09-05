@@ -13,6 +13,7 @@ import socket
 import traceback
 import subprocess
 import builder
+import json
 
 exchange = Exchange("amq.direct", type="direct", durable=True) 
 
@@ -38,9 +39,18 @@ def get_otp_version():
     return version
 
 def gtfs_bucket(cache = {}):
+    if not 'bucket' in cache:
+        connection = connect_s3(settings.AWS_ACCESS_KEY_ID, settings.AWS_SECRET_KEY)
+        bucket = connection.get_bucket(settings.S3_BUCKET)
+        cache['bucket'] = bucket
+    else:
+        return cache['bucket']
+    return bucket
+
+def managed_gtfs_bucket(cache = {}):
     if not 'bucket' in cache:        
         connection = connect_s3(settings.AWS_ACCESS_KEY_ID, settings.AWS_SECRET_KEY)        
-        bucket = connection.get_bucket(settings.S3_BUCKET)
+        bucket = connection.get_bucket('gtfs-test')
         cache['bucket'] = bucket
     else:
         return cache['bucket']
@@ -50,6 +60,15 @@ def graph_bucket(cache = {}):
     if not 'bucket' in cache:        
         connection = connect_s3(settings.AWS_ACCESS_KEY_ID, settings.AWS_SECRET_KEY)        
         bucket = connection.get_bucket(settings.GRAPH_S3_BUCKET)
+        cache['bucket'] = bucket
+    else:
+        return cache['bucket']
+    return bucket
+
+def osm_bucket(cache = {}):
+    if not 'bucket' in cache:        
+        connection = connect_s3(settings.AWS_ACCESS_KEY_ID, settings.AWS_SECRET_KEY)        
+        bucket = connection.get_bucket('managed-osm')
         cache['bucket'] = bucket
     else:
         return cache['bucket']
@@ -65,9 +84,27 @@ def write_output_to_s3(req_name, output):
     key.key = "output/%s_output.txt" % req_name
     key.set_contents_from_filename(outputfilename)
 
+def download_managed_gtfs(directory, config):
+    bucket = managed_gtfs_bucket()
+
+    print "feeds:"
+    os.makedirs(os.path.join(directory, 'gtfs'))
+    for feed in config['feeds']:
+        print " - %s" % feed['feedId']
+        key = Key(bucket)
+        key.key = feed['feedId']
+        basename = os.path.basename(feed['feedId'])
+        path = os.path.join(directory, 'gtfs', "%s.zip" % basename)
+        key.get_contents_to_filename(path)
+        #if extract is True:
+        #    gtfsfeeddir = os.path.join(directory, 'gtfs', basename)
+        #    subprocess.call(['unzip', path, '-d', gtfsfeeddir])
+
 
 # handler functions
 
+
+# legacy support to create "preview" deployment. look into merging w/ "managed" deployment workflow below
 def create_instance(conn, body):
 
     try:
@@ -100,7 +137,8 @@ def create_instance(conn, body):
             i += 1
        
         # prepare and run graph builder
-        builder.prepare_graph_builder(directory, body['fare_factory'], extra_props_dict)
+        builder.generate_osm_extract(directory)
+        builder.generate_graph_config(directory, body['fare_factory'], extra_props_dict)
         gbresults = builder.run_graph_builder(directory)
                 
         print "finished gb: %s" % gbresults['success']
@@ -145,6 +183,103 @@ def create_instance(conn, body):
         now = datetime.now()
         errfile = "/var/otp/gb_err_%s_%s" % (body['request_id'], now.strftime("%F-%T"))
         traceback.print_exc(file=open(errfile,"a"))
+
+
+
+def build_managed(conn, body):
+
+    try:        
+        print "build_managed"
+        print body['config']
+        print body['osm_key']
+
+        if body['osm_key'] is None:
+            print "no osm key"
+            publisher = conn.Producer(routing_key="build_managed_osm", exchange=exchange)
+            publisher.publish({ 'id' : body['id'], 'config' : body['config'], 'trigger_rebuild' : True })
+            return
+
+        
+        print "key exists, building"
+
+        config = json.loads(body['config'])
+
+        # set up working directory
+        req_name = "managed_%s" % get_req_name(body['id']);
+        directory = init_directory(req_name);
+
+        # download osm extract and gtfs feeds
+        bucket = osm_bucket()
+        key = Key(bucket)
+        key.key = body['osm_key']
+        path = os.path.join(directory, 'extract.osm')
+        key.get_contents_to_filename(path)
+
+        download_managed_gtfs(directory, config)
+
+        # run graph builder
+        builder.generate_graph_config_managed(directory, config) 
+        gbresults = builder.run_graph_builder(directory)
+
+        graph_key = None
+
+        # upload graph to S3
+        if gbresults['success']:
+            key = Key(graph_bucket())
+            graph_key = "managed/%s/Graph_%s.obj" % (body['id'], datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S"))
+            key.key = graph_key
+            graph_file = os.path.join(directory,'Graph.obj')
+            key.set_contents_from_filename(graph_file)
+
+        # publish managed_graph_done
+        publisher = conn.Producer(routing_key="managed_graph_done", exchange=exchange)
+        publisher.publish({ 'id' : body['id'], 'success' : gbresults['success'], 'graph_key' : graph_key, 'otp_version' : get_otp_version(), 'config' : body['config'] })
+
+    except:
+        now = datetime.now()
+        errfile = "/var/otp/gb_err_%s_%s" % (body['id'], now.strftime("%F-%T"))
+        traceback.print_exc(file=open(errfile,"a"))
+        traceback.print_exc()
+
+
+
+
+def build_managed_osm(conn, body):
+
+    try:        
+        print "build_managed_osm"
+
+        req_name = "managed_%s" % get_req_name(body['id']);
+        directory = init_directory(req_name);
+	
+        config = json.loads(body['config'])
+
+        download_managed_gtfs(directory, config)
+        
+        builder.generate_osm_extract(directory)
+
+        key = Key(osm_bucket())
+        osm_key = "%s.osm" % body['id']
+        key.key = osm_key
+        key.set_contents_from_filename(os.path.join(directory, 'extract.osm'))
+        
+        print 'uploaded osm'
+
+        publisher = conn.Producer(routing_key="osm_extract_done", exchange=exchange)
+        publisher.publish({ 'id' : body['id'], 'osm_key' : osm_key })       
+
+        print 'published extract_osm_done'
+
+        if 'trigger_rebuild' in body and body['trigger_rebuild'] is True:
+            publisher = conn.Producer(routing_key="build_managed", exchange=exchange)
+            publisher.publish({ 'id' : body['id'], 'osm_key' : osm_key, 'config' : body['config'] })
+
+
+    except:
+        now = datetime.now()
+        errfile = "/var/otp/gb_err_%s_%s" % (body['id'], now.strftime("%F-%T"))
+        traceback.print_exc(file=open(errfile,"a"))
+        traceback.print_exc()
 
 
 def rebuild_graph(conn, body):
