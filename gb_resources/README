@@ -4,6 +4,7 @@ The following resources are already included:
 
 gp_resources/templates -- python templates used to generate the graph-builder config file
 gb_resources/osmtools -- utility to contruct an osmosis extraction polygon based on GTFS data
+gb_resources/merger -- utilities used when merging GTFS.
 
 ** The following must be added manually after unpacking **
 
