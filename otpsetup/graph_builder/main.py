@@ -8,9 +8,15 @@ import traceback
 
 import handlers
 
+import process_gtfs, transformer
+
 print "Starting Graph Builder Consumer"
 
-queues = build_multi_queue(["create_instance", "rebuild_graph", "build_managed", "build_managed_osm"])
+#merged_path = "/mnt/merged.zip"
+#transformed_path = "/var/otp/transformed.zip"
+#transformer.run_transform(merged_path, transformed_path)
+
+queues = build_multi_queue(["create_instance", "rebuild_graph", "build_managed", "build_managed_osm", "process_gtfs"])
 
 def handle(conn, body, message):
     

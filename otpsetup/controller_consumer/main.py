@@ -10,7 +10,7 @@ import handlers
 
 print "Starting Controller Consumer"
 
-queues = build_multi_queue(["validation_done", "graph_done", "rebuild_graph_done", "managed_graph_done", "osm_extract_done", "deployment_ready", "proxy_done", "multideployer_ready", "multideployment_done"])
+queues = build_multi_queue(["validation_done", "graph_done", "rebuild_graph_done", "managed_graph_done", "process_gtfs_done", "osm_extract_done", "deployment_ready", "proxy_done", "multideployer_ready", "multideployment_done"])
 
 def handle(conn, body, message):
     

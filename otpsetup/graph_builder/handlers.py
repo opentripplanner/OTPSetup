@@ -3,17 +3,14 @@
 from boto import connect_s3, connect_ec2
 from boto.s3.key import Key
 from kombu import Exchange
-from otpsetup.client.models import GtfsFile
+#from otpsetup.client.models import GtfsFile
 from otpsetup import settings
 from shutil import copyfileobj
 from datetime import datetime
 
-import os
-import socket
-import traceback
-import subprocess
-import builder
-import json
+import os, socket, traceback, subprocess, builder, json, uuid
+
+#import transformer
 
 exchange = Exchange("amq.direct", type="direct", durable=True) 
 
@@ -74,31 +71,29 @@ def osm_bucket(cache = {}):
         return cache['bucket']
     return bucket
 
-def write_output_to_s3(req_name, output):
+def write_output_to_s3(key_text, output):
     outputfilename = '/mnt/gb_output'
     outputfile = open(outputfilename, 'w')
     outputfile.write(output)
     outputfile.close()
 
     key = Key(graph_bucket())
-    key.key = "output/%s_output.txt" % req_name
+    key.key = key_text
     key.set_contents_from_filename(outputfilename)
 
-def download_managed_gtfs(directory, config):
+def download_managed_gtfs(directory, feeds):
     bucket = managed_gtfs_bucket()
 
     print "feeds:"
     os.makedirs(os.path.join(directory, 'gtfs'))
-    for feed in config['feeds']:
-        print " - %s" % feed['feedId']
+    for feed in feeds:
+        print " - %s" % feed['key']
         key = Key(bucket)
-        key.key = feed['feedId']
-        basename = os.path.basename(feed['feedId'])
+        key.key = feed['key']
+        basename = os.path.basename(feed['key'].split('/')[-1])
         path = os.path.join(directory, 'gtfs', "%s.zip" % basename)
         key.get_contents_to_filename(path)
-        #if extract is True:
-        #    gtfsfeeddir = os.path.join(directory, 'gtfs', basename)
-        #    subprocess.call(['unzip', path, '-d', gtfsfeeddir])
+        print "    - wrote %s" % path
 
 
 # handler functions
@@ -177,63 +172,148 @@ def create_instance(conn, body):
         print 'published graph_done'
         
         # write gb output to file to s3
-        write_output_to_s3(req_name, gbresults['output'])
+        write_output_to_s3("output/%s_output.txt" % req_name, gbresults['output'])
 
     except:
         now = datetime.now()
         errfile = "/var/otp/gb_err_%s_%s" % (body['request_id'], now.strftime("%F-%T"))
         traceback.print_exc(file=open(errfile,"a"))
 
+def process_gtfs(conn, body):
 
-
-def build_managed(conn, body):
-
-    try:        
-        print "build_managed"
+    try:
+        print 'process_gtfs'
         print body['config']
-        print body['osm_key']
-
-        if body['osm_key'] is None:
-            print "no osm key"
-            publisher = conn.Producer(routing_key="build_managed_osm", exchange=exchange)
-            publisher.publish({ 'id' : body['id'], 'config' : body['config'], 'trigger_rebuild' : True })
-            return
-
-        
-        print "key exists, building"
-
         config = json.loads(body['config'])
 
-        # set up working directory
-        req_name = "managed_%s" % get_req_name(body['id']);
-        directory = init_directory(req_name);
+        directory = "/mnt/gtfs%s" % body['id']
+        bucket = managed_gtfs_bucket()
 
-        # download osm extract and gtfs feeds
-        bucket = osm_bucket()
-        key = Key(bucket)
-        key.key = body['osm_key']
-        path = os.path.join(directory, 'extract.osm')
-        key.get_contents_to_filename(path)
+        print "feeds:"
+        i = 0
+        agency_groups = { } 
+        os.makedirs(os.path.join(directory, 'gtfs'))
+        for feed in config['feeds']:
+            feedId = feed['feedId']
+            print " - %s" % feedId
+            
+            if 'defaultAgencyId' in feed:
+                agencyId = feed['defaultAgencyId']
+                if agencyId in agency_groups:
+                    agency_groups[agencyId].append(feed)
+                else:
+                    agency_groups[agencyId] = [ feed ]
+ 
+            else:
+                agencyId = "agency%s" % i
+                i = i + 1
+                agency_groups[agencyId] = [ feedId ]
+                
+        print agency_groups
 
-        download_managed_gtfs(directory, config)
+        agency_keys = { }
 
-        # run graph builder
-        builder.generate_graph_config_managed(directory, config) 
-        gbresults = builder.run_graph_builder(directory)
+        for agencyId in agency_groups:
+            print "%s: %s" % (agencyId, len(agency_groups[agencyId]))
+            agencyDir = os.path.join(directory, agencyId)
+            
+            if len(agency_groups[agencyId]) > 1:
 
-        graph_key = None
+                # download & shorten feeds
+                os.makedirs(agencyDir)
 
-        # upload graph to S3
-        if gbresults['success']:
-            key = Key(graph_bucket())
-            graph_key = "managed/%s/Graph_%s.obj" % (body['id'], datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S"))
-            key.key = graph_key
-            graph_file = os.path.join(directory,'Graph.obj')
-            key.set_contents_from_filename(graph_file)
+                shortened_paths = []                
+                for feed in agency_groups[agencyId]:
+                    
+                    feedId = feed['feedId']
 
-        # publish managed_graph_done
-        publisher = conn.Producer(routing_key="managed_graph_done", exchange=exchange)
-        publisher.publish({ 'id' : body['id'], 'success' : gbresults['success'], 'graph_key' : graph_key, 'otp_version' : get_otp_version(), 'config' : body['config'] })
+                    print "downloading %s" % feedId
+                    key = Key(bucket)
+                    key.key = feedId
+                    basename = os.path.basename(feedId)
+                    path = os.path.join(agencyDir, "%s.zip" % basename)
+                    key.get_contents_to_filename(path)
+
+                    # shorten
+                    print " shortening"
+                    shortened_path = os.path.join(agencyDir, "%s_shortened.zip" % basename)
+                    shorten_date = feed['expireOn'].replace("-","")
+                    subprocess.call(['python', '/var/otp/resources/process_gtfs/shortenGtfsFeed.py', shorten_date, path, shortened_path])
+                    shortened_paths.append(shortened_path) 
+                    print " shortened"
+                    
+                # merge
+                mergejarpath = "/var/otp/resources/process_gtfs/merger.jar"
+                #merge_cmd = ['java', '-Xms15G', '-Xmx15G', '-jar', mergejarpath, '--file=agency.txt', '--fuzzyDuplicates', '--file=routes.txt', '--fuzzyDuplicates', '--file=shapes.txt', '--fuzzyDuplicates', '--file=fare_attributes.txt', '--fuzzyDuplicates', '--file=fare_rules.txt', '--fuzzyDuplicates', '--file=transfers.txt', '--fuzzyDuplicates', '--file=calendar.txt', '--renameDuplicates', '--file=trips.txt', '--renameDuplicates'] 
+                merge_cmd = ['java', '-Xms15G', '-Xmx15G', '-jar', mergejarpath, '--file=agency.txt', '--fuzzyDuplicates', '--file=stops.txt', '--fuzzyDuplicates', '--file=routes.txt', '--fuzzyDuplicates', '--file=shapes.txt', '--fuzzyDuplicates', '--file=fare_attributes.txt', '--fuzzyDuplicates', '--file=fare_rules.txt', '--fuzzyDuplicates', '--file=transfers.txt', '--fuzzyDuplicates', '--file=calendar.txt', '--duplicateDetection=IDENTITY', '--renameDuplicates', '--file=trips.txt', '--duplicateDetection=IDENTITY', '--renameDuplicates'] 
+                merge_cmd.extend(shortened_paths)
+
+                merged_path = os.path.join(agencyDir, "merged.zip")
+                merge_cmd.append(merged_path)
+
+                print "merging"
+                subprocess.call(merge_cmd)
+                print "merged"
+
+                to_transform = merged_path
+ 
+            else:
+
+                os.makedirs(agencyDir)
+                feed = agency_groups[agencyId][0] 
+                print "process standalone: %s" % feed['feedId']
+                key = Key(bucket)
+                key.key = feed['feedId']
+                basename = os.path.basename(feedId)
+                path = os.path.join(agencyDir, "%s.zip" % basename)
+                key.get_contents_to_filename(path)
+
+                # shorten
+                print " shortening"
+                shortened_path = os.path.join(agencyDir, "%s_shortened.zip" % basename)
+                shorten_date = feed['expireOn'].replace("-","")
+                subprocess.call(['python', '/var/otp/resources/process_gtfs/shortenGtfsFeed.py', shorten_date, path, shortened_path])
+                print " shortened"
+
+                to_transform = shortened_path
+
+
+            # transform
+
+
+            transformed_path = os.path.join(agencyDir, "transformed.zip")
+            transformjarpath = "/var/otp/resources/process_gtfs/transformer.jar"
+
+            transform_json = '{"op":"transform","class":"org.onebusaway.gtfs_transformer.updates.CalendarSimplicationStrategy"}'
+            transform_cmd = ['java', '-Xms15G', '-Xmx15G', '-jar', transformjarpath, '--transform=json:%s' % transform_json, to_transform, transformed_path ]
+
+            print "transforming"
+            subprocess.call(transform_cmd)
+            print "transformed"
+
+            # upload to s3
+            print "uploading to s3"
+            s3_key = "processed/%s" % uuid.uuid1()
+            key = Key(bucket)
+            key.key = s3_key
+            key.set_contents_from_filename(transformed_path)
+
+            # add key to list
+            agency_keys[agencyId] = s3_key
+
+            #else:
+            #
+            #    # add standalone feed to list 
+            #    agency_keys[agencyId] = agency_groups[agencyId][0]
+
+        print agency_keys
+
+        # publish process_gtfs_done message
+        publisher = conn.Producer(routing_key="process_gtfs_done", exchange=exchange)
+        publisher.publish({ 'id' : body['id'], 'key_map' : agency_keys }) 
+        print "published p_g_d msg"
+
+
 
     except:
         now = datetime.now()
@@ -242,6 +322,69 @@ def build_managed(conn, body):
         traceback.print_exc()
 
 
+def build_managed(conn, body):
+
+    try:        
+        print "build_managed"
+
+        print "osm_key=%s" % body['osm_key']
+
+        feeds = body['feeds']
+
+        if body['osm_key'] is None:
+            print "no osm key"
+            publisher = conn.Producer(routing_key="build_managed_osm", exchange=exchange)
+            publisher.publish({ 'id' : body['id'], 'feeds' : feeds, 'trigger_rebuild' : True })
+            return
+
+        
+        print "key exists, building"
+
+        #config = json.loads(body['config'])
+
+        # set up working directory
+        req_name = "managed_%s" % get_req_name(body['id']);
+        directory = init_directory(req_name);
+        download_managed_gtfs(directory, feeds)
+
+
+        # download osm extract
+        bucket = osm_bucket()
+        key = Key(bucket)
+        key.key = body['osm_key']
+        path = os.path.join(directory, 'extract.osm')
+        key.get_contents_to_filename(path)
+
+
+        # run graph builder
+        builder.generate_graph_config_managed(directory, feeds) 
+        gbresults = builder.run_graph_builder(directory)
+
+        graph_key = None
+
+        timestamp = datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%S")
+
+        # upload graph to S3
+        if gbresults['success']:
+            key = Key(graph_bucket())
+            graph_key = "managed/%s/Graph_%s.obj" % (str(body['id']).zfill(6), timestamp)
+            key.key = graph_key
+            graph_file = os.path.join(directory,'Graph.obj')
+            key.set_contents_from_filename(graph_file)
+
+        # write gb output to file to s3
+        output_key = "managed/%s/output_%s.txt" % (str(body['id']).zfill(6), timestamp)
+        write_output_to_s3(output_key, gbresults['output'])
+
+        # publish managed_graph_done
+        publisher = conn.Producer(routing_key="managed_graph_done", exchange=exchange)
+        publisher.publish({ 'id' : body['id'], 'success' : gbresults['success'], 'graph_key' : graph_key, 'output_key' : output_key, 'otp_version' : get_otp_version() })
+
+    except:
+        now = datetime.now()
+        errfile = "/var/otp/gb_err_%s_%s" % (body['id'], now.strftime("%F-%T"))
+        traceback.print_exc(file=open(errfile,"a"))
+        traceback.print_exc()
 
 
 def build_managed_osm(conn, body):
@@ -252,9 +395,9 @@ def build_managed_osm(conn, body):
         req_name = "managed_%s" % get_req_name(body['id']);
         directory = init_directory(req_name);
 	
-        config = json.loads(body['config'])
+        feeds = body['feeds']
 
-        download_managed_gtfs(directory, config)
+        download_managed_gtfs(directory, feeds)
         
         builder.generate_osm_extract(directory)
 
@@ -272,7 +415,7 @@ def build_managed_osm(conn, body):
 
         if 'trigger_rebuild' in body and body['trigger_rebuild'] is True:
             publisher = conn.Producer(routing_key="build_managed", exchange=exchange)
-            publisher.publish({ 'id' : body['id'], 'osm_key' : osm_key, 'config' : body['config'] })
+            publisher.publish({ 'id' : body['id'], 'osm_key' : osm_key, 'feeds' : feeds })
 
 
     except:

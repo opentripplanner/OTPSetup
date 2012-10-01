@@ -6,6 +6,29 @@ from django.contrib.auth.models import User
 from kombu import Exchange
 from otpsetup.shortcuts import DjangoBrokerConnection
 
+
+class DeploymentGroup(models.Model):
+    name = models.CharField(max_length=20)
+    description = models.TextField(max_length=1000, null=True, blank=True)
+
+    def __str__(self):
+        return self.name
+
+
+class DeploymentHost(models.Model):
+    name = models.CharField(max_length=50, blank=True)
+    instance_id = models.CharField(max_length=20)
+    host_ip = models.CharField(max_length=20)
+    otp_version = models.CharField(max_length=20)
+    auth_password = models.CharField(max_length=20)
+    total_memory = models.BigIntegerField()
+    free_memory = models.BigIntegerField()
+    group = models.ForeignKey(DeploymentGroup, null=True, blank=True)
+
+    def __str__(self):
+        return "(%s) %s" % (self.id, self.name)
+
+
 STATES = (("running", "Running"),
           ("building", "Request not yet submitted"),
           ("pre_transload", "Getting GTFS"),
@@ -19,18 +42,6 @@ STATES = (("running", "Running"),
           ("deploy_failed", "Deployment failed"),          
           ("deploy_proxy", "Deployment registered with proxy server"),          
           )
-
-class DeploymentHost(models.Model):
-    name = models.CharField(max_length=50, blank=True)
-    instance_id = models.CharField(max_length=20)
-    host_ip = models.CharField(max_length=20)
-    otp_version = models.CharField(max_length=20)
-    auth_password = models.CharField(max_length=20)
-    total_memory = models.BigIntegerField()
-    free_memory = models.BigIntegerField()
-
-    def __str__(self):
-        return "(%s) %s" % (self.id, self.name)
 
 class InstanceRequest(models.Model):
     state = models.CharField(max_length=15, default='building', choices = STATES)
@@ -69,14 +80,16 @@ class InstanceRequest(models.Model):
         super(InstanceRequest, self).save(force_insert, force_update)
         self.__original_dephost = self.deployment_host
 
-class ManagedDeployment(models.Model):
-    source = models.CharField(max_length=15)
-    otp_version = models.CharField(max_length=20, null=True, blank=True)
-    osm_key = models.CharField(max_length=200, null=True)
-    last_graph_key = models.CharField(max_length=60, null=True, blank=True)
-    last_rebuilt = models.DateTimeField('last rebuilt', null=True)
-    last_config = models.TextField(max_length=10000, null=True, blank=True)
 
+class InstanceRequestForm(ModelForm):
+    fare_factory = RegexField(label="Fare model", max_length=200, 
+                             regex=r'^[\w.]+')
+
+    class Meta:
+        model = InstanceRequest
+        fields = ('comments', 'agency', 'fare_factory')
+
+# currently used for user-uploaded gtfs files only
 class GtfsFile(models.Model):
     instance_request = models.ForeignKey(InstanceRequest)
     s3_key = models.CharField(max_length=200, null=True, db_index=True)
@@ -89,14 +102,64 @@ class GtfsFile(models.Model):
             return "(None)"
         return "<textarea rows=8 cols=85>%s</textarea>" % self.validation_output
     validation_output_str.allow_tags = True
+    
+    
+class ManagedDeployment(models.Model):
+    source = models.CharField(max_length=15)
+    description = models.CharField(max_length=200, null=True, blank=True)
+    group = models.ForeignKey(DeploymentGroup, null=True, blank=True)
+    last_osm_key = models.CharField(max_length=200, null=True, blank=True)
 
-class InstanceRequestForm(ModelForm):
-    fare_factory = RegexField(label="Fare model", max_length=200, 
-                             regex=r'^[\w.]+')
+    def __str__(self):
+        return "[%s] %s (%s)" % (self.id, self.source, self.description)
 
-    class Meta:
-        model = InstanceRequest
-        fields = ('comments', 'agency', 'fare_factory')
+class GraphBuild(models.Model):
+    deployment = models.ForeignKey(ManagedDeployment)
+    creation_date = models.DateTimeField(default=datetime.now)
+    completion_date = models.DateTimeField(null=True)
+    config = models.TextField(max_length=10000, null=True, blank=True)
+    osm_key = models.CharField(max_length=200, null=True, blank=True)
+    graph_key = models.CharField(max_length=200, null=True, blank=True)
+    graph_size = models.BigIntegerField(null=True)
+    output_key = models.CharField(max_length=200, null=True, blank=True)
+    success = models.BooleanField(default=False)
+    otp_version = models.CharField(max_length=20, null=True, blank=True)
+
+    def gtfs_count(self):
+        return len(self.gtfsbuildmapping_set.all())
+
+    def host_count(self):
+        return len(self.buildhostmapping_set.all())
+
+    def link(self):
+        return "<a href='/admin/client/graphbuild/%s'>[<b>%s</b>]</a>" % (self.id, self.id)
+    link.allow_tags = True
+
+    def __str__(self):
+        return "Build #%s / Deployment %s" % (self.id, self.deployment)
+
+
+class ManagedGtfsFeed(models.Model):
+    s3_key = models.CharField(max_length=200, db_index=True)
+    default_agency_id = models.CharField(max_length=100, null=True, blank=True)
+    default_bikes_allowed = models.CharField(max_length=20, null=True, blank=True)
+    expire_on = models.CharField(max_length=20, null=True, blank=True)
+
+    def __str__(self):
+        if self.default_agency_id is not None:
+            return "%s (%s)" % (self.s3_key, self.default_agency_id)
+        return self.s3_key    
+ 
+class GtfsBuildMapping(models.Model):
+    gtfs_feed = models.ForeignKey(ManagedGtfsFeed)
+    graph_build = models.ForeignKey(GraphBuild)
+
+class BuildHostMapping(models.Model):
+    graph_build = models.ForeignKey(GraphBuild)
+    deployment_host = models.ForeignKey(DeploymentHost)
+    
+
+# not currently used:
 
 MACHINE_TYPES=[('graph builder', 'Graph Builder', ), ('webapp', 'Webapp')]
 

@@ -1,13 +1,14 @@
+
 #!/usr/bin/python
 
-from boto import connect_ec2
+from boto import connect_ec2, connect_s3
 from kombu import Exchange
 from django.core.mail import send_mail
 from django.core.urlresolvers import reverse
-from otpsetup.client.models import InstanceRequest, GtfsFile, DeploymentHost, ManagedDeployment
+from otpsetup.client.models import InstanceRequest, GtfsFile, DeploymentHost, ManagedDeployment, GraphBuild, ManagedGtfsFeed, GtfsBuildMapping, BuildHostMapping
 from otpsetup import settings
 
-import base64, datetime
+import base64, datetime, traceback
 
 exchange = Exchange("amq.direct", type="direct", durable=True)
 
@@ -35,6 +36,44 @@ validation.  The request is from %s %s <%s>.
               settings.DEFAULT_FROM_EMAIL,
               settings.ADMIN_EMAILS, fail_silently=False)
 
+
+def process_gtfs_done(conn, body):
+    build_id = body['id']
+    key_map = body['key_map']
+
+    print key_map
+
+    build = GraphBuild.objects.get(id=build_id)
+
+    # create gtfs objects
+
+    for agencyId in key_map:
+        try:
+            feed = ManagedGtfsFeed.objects.get(s3_key = key_map[agencyId])
+        except ManagedGtfsFeed.DoesNotExist:
+            print "feed does not exist"
+            feed = ManagedGtfsFeed(s3_key=key_map[agencyId], default_agency_id=agencyId)
+            feed.save()
+        
+        mapping = GtfsBuildMapping(gtfs_feed=feed, graph_build=build)
+        mapping.save()
+        print "saved mapping"
+
+    
+    # build feeds
+
+    feeds = [ ]
+    for mapping in build.gtfsbuildmapping_set.all():
+        gtfsfeed = mapping.gtfs_feed
+        feeds.append({ 'key' : gtfsfeed.s3_key, 'defaultAgencyId' : gtfsfeed.default_agency_id }) 
+
+    print "built feeds: %s" % feeds
+    # publish build_graph_managed message
+
+    publisher = conn.Producer(routing_key="build_managed", exchange=exchange)
+    publisher.publish({'id' : build_id, 'osm_key' : build.deployment.last_osm_key, 'feeds' : feeds})
+
+    print "published b_m message"
 
 def graph_done(conn, body):
 
@@ -91,23 +130,35 @@ Request ID: %s
 
 def osm_extract_done(conn, body):
     
-    man_dep = ManagedDeployment.objects.get(id = body['id'])
-    man_dep.osm_key = body['osm_key']
-    man_dep.save()
+    build = GraphBuild.objects.get(id = body['id'])
+    build.osm_key = body['osm_key']
+    build.save()
+ 
+    dep = build.deployment
+    dep.last_osm_key = body['osm_key']
+    dep.save()
 
 
 def managed_graph_done(conn, body):
 
-    man_dep = ManagedDeployment.objects.get(id = body['id'])
+    build = GraphBuild.objects.get(id = body['id'])
+    build.success = body['success']
+    build.otp_version = body['otp_version']
+    build.completion_date = datetime.datetime.now()
+    build.output_key = body['output_key']
+    if body['success']:
+        build.graph_key = body['graph_key']
+
+        connection = connect_s3(settings.AWS_ACCESS_KEY_ID, settings.AWS_SECRET_KEY)
+        bucket = connection.get_bucket(settings.GRAPH_S3_BUCKET)
+        key = bucket.lookup(build.graph_key)
+        build.graph_size = int(key.size)
+    
+    build.save()
 
     if body['success']:
-
-        man_dep.last_graph_key = body['graph_key']
-        man_dep.otp_version = body['otp_version']
-        man_dep.last_rebuilt = datetime.datetime.now()
-        man_dep.last_config = body['config']
-        man_dep.save()
-
+        # deploy to servers
+        pass
 
 def rebuild_graph_done(conn, body):
 
@@ -206,23 +257,30 @@ def multideployer_ready(conn, body):
         publisher.publish({'host_id' : dephost.id, 'host_ip' : dephost.host_ip})
     except:
         print "multideployer error"
+        traceback.print_exc()
 
 
 def multideployment_done(conn, body):
 
-    if not 'request_id' in body:
+    if not 'build_id' in body:
         print 'multideployment_done message missing required parameters'
         return
 
-    request_id = body['request_id']
+    build_id = body['build_id']
+    build = GraphBuild.objects.get(id=build_id)
+    host = DeploymentHost.objects.get(instance_id=body['instance_id'])
+    
+    mapping = BuildHostMapping(graph_build=build, deployment_host=host)
+    mapping.save()
+    print "created build-host mapping"
 
-    irequest = InstanceRequest.objects.get(id=request_id)
-    dephost = irequest.deployment_host
-    irequest.state = "deploy_inst"
-    irequest.admin_password = dephost.auth_password
-    irequest.save()
+    #irequest = InstanceRequest.objects.get(id=request_id)
+    #dephost = irequest.deployment_host
+    #irequest.state = "deploy_inst"
+    #irequest.admin_password = dephost.auth_password
+    #irequest.save()
 
     # tell proxy server to create mapping
-    publisher = conn.Producer(routing_key="register_proxy_multi", exchange=exchange)
-    publisher.publish({'request_id' : request_id, 'host_ip' : dephost.host_ip})
+    #publisher = conn.Producer(routing_key="register_proxy_multi", exchange=exchange)
+    #publisher.publish({'request_id' : request_id, 'host_ip' : dephost.host_ip})
 

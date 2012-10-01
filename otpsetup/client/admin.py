@@ -6,7 +6,8 @@ from django.contrib import admin
 from django.db import models
 from django.forms import TextInput, Textarea
 from kombu import Exchange
-from models import InstanceRequest, AmazonMachineImage, GtfsFile, ManagedDeployment
+from models import InstanceRequest, AmazonMachineImage, GtfsFile, ManagedDeployment, DeploymentGroup, GraphBuild, GtfsBuildMapping, BuildHostMapping
+from otpsetup.deploy_ops import deploy_once
 import urllib2, sys, time
 
 
@@ -177,6 +178,11 @@ admin.site.register(AmazonMachineImage, AmazonMachineImageAdmin)
 
 
 
+class BuildHostMappingInline(admin.TabularInline):
+   model=BuildHostMapping
+   readonly_fields = ('graph_build','deployment_host')
+   extra=0
+
 def launch_deployment_host(modeladmin, request, queryset):
 
     exchange = Exchange("amq.direct", type="direct", durable=True)
@@ -223,18 +229,86 @@ def update_memory(modeladmin, request, queryset):
         except:
             sys.stderr.write("warning: memory utilization for deployment host % could not be accessed" % dephost.id)
 
-    actions = [launch_deployment_host, update_memory]
 
 class DeploymentHostAdmin(admin.ModelAdmin):
-    list_display = ('id', 'name', 'instance_id', 'host_ip', 'otp_version', 'total_memory', 'free_memory')
-    readonly_fields = ('instance_id', 'host_ip', 'otp_version', 'auth_password', 'total_memory', 'free_memory')
+    list_display = ('id', 'group', 'name', 'instance_id', 'host_ip', 'otp_version', 'total_memory', 'free_memory')
+    readonly_fields = ('instance_id', 'host_ip', 'auth_password', 'total_memory', 'free_memory')
     actions = [launch_deployment_host, update_memory]
+
+    inlines = [
+        BuildHostMappingInline
+    ]
 
 admin.site.register(DeploymentHost, DeploymentHostAdmin)
 
+
+class DeploymentGroupAdmin(admin.ModelAdmin):
+    list_display = ('id', 'name')
+
+admin.site.register(DeploymentGroup, DeploymentGroupAdmin)
+
+
+class GtfsBuildMappingInline(admin.TabularInline):
+   model=GtfsBuildMapping
+   readonly_fields = ( 'gtfs_feed', 'graph_build')
+   extra=0
+
+
+
+# GraphBuild
+
+def update_graph_size(modeladmin, request, queryset):
+
+    for build in queryset:
+        if build.success and not build.graph_key is None:
+            connection = connect_s3(settings.AWS_ACCESS_KEY_ID, settings.AWS_SECRET_KEY)
+            bucket = connection.get_bucket(settings.GRAPH_S3_BUCKET)
+            key = bucket.lookup(build.graph_key)
+            build.graph_size = int(key.size)
+            build.save() 
+
+def deploy_managed_graph(modeladmin, request, queryset):
+    for build in queryset:
+        if build.success and not build.graph_key is None:
+            deploy_once(build)
+
+class GraphBuildAdmin(ButtonableModelAdmin):
+    list_display = ('id', 'deployment', 'success', 'gtfs_count', 'creation_date', 'completion_date', 'graph_size', 'otp_version', 'host_count')
+    readonly_fields = ('deployment', 'success', 'creation_date', 'completion_date', 'otp_version')
+
+    inlines = [
+        GtfsBuildMappingInline, BuildHostMappingInline
+    ]
+
+    actions = [update_graph_size, deploy_managed_graph]
+     
+    def redeploy(self, request):
+        self.message_user(request, "redeployed")
+
+    redeploy.short_description = "Redeploy"
+
+    buttons = [redeploy]
+
+
+admin.site.register(GraphBuild, GraphBuildAdmin)
+
+class GraphBuildInline(admin.TabularInline):
+    readonly_fields =('link', 'success', 'gtfs_count', 'creation_date','completion_date','graph_size', 'otp_version', 'host_count')
+    exclude = ('osm_key','graph_key', 'output_key', 'config')    
+    model = GraphBuild
+    extra = 0
+
+
+
+# ManagedDeployment
+
 class ManagedDeploymentAdmin(admin.ModelAdmin):
-    list_display = ('id', 'source', 'otp_version', 'last_rebuilt')
-    readonly_fields = ('otp_version', 'last_rebuilt')
+    list_display = ('id', 'group', 'source', 'description')
+    list_filter = ('group',)
+
+    inlines = [
+        GraphBuildInline,
+    ]
 
 admin.site.register(ManagedDeployment, ManagedDeploymentAdmin)
 

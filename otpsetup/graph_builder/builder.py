@@ -131,7 +131,7 @@ def generate_graph_config(workingdir, fare_factory, extra_props_dict):
     gbfile.write(gbxml)
     gbfile.close()
 
-def generate_graph_config_managed(workingdir, config):
+def generate_graph_config_managed(workingdir, feeds):
 
     print "gen managed gb.xml"
 
@@ -154,10 +154,11 @@ def generate_graph_config_managed(workingdir, config):
     templatefile.close()
 
     gtfslist = ''
-    for feed in config['feeds']:
-        print " - %s" % feed['feedId']
+    for feed in feeds:
+        print " - %s" % feed['key']
+        feedpath = os.path.join(workingdir, 'gtfs', '%s.zip' % feed['key'].split('/')[-1])
         gtfslist += '                        <bean class="org.opentripplanner.graph_builder.model.GtfsBundle">\n'
-        gtfslist += '                            <property name="path" value="'+os.path.join(workingdir, 'gtfs', '%s.zip' % feed['feedId'])+'" />\n'
+        gtfslist += '                            <property name="path" value="' + feedpath + '" />\n'
         if 'defaultAgencyId' in feed:
             gtfslist += '                            <property name="defaultAgencyId" value="'+feed['defaultAgencyId']+'" />\n'
         #if 'defaultBikesAllowed' in feed:
@@ -184,7 +185,7 @@ def run_graph_builder(workingdir):
     otpjarpath = os.path.join(otpgbdir, 'graph-builder.jar')
     if not os.path.exists(nedcachedir): os.makedirs(nedcachedir) 
 
-    result = subprocess.Popen(["java", "-Xms4G", "-Xmx4G", "-jar", otpjarpath, gbfilepath], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    result = subprocess.Popen(["java", "-Xms15G", "-Xmx15G", "-jar", otpjarpath, gbfilepath], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
     
     gb_stdout = result.stdout.read()
     gb_stderr = result.stderr.read()
