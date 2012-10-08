@@ -42,6 +42,7 @@
             <list>
                 <ref bean="osmBuilder" />
                 <ref bean="gtfsBuilder" />
+                <bean id="floatingIslands" class="org.opentripplanner.graph_builder.impl.PruneFloatingIslands" />
                 <ref bean="transitStreetLink" />
                 <ref bean="optimizeTransit" />
                 <ref bean="checkGeometry" />
