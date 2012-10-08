@@ -7,23 +7,31 @@ monkey.patch_socket() #must be done before loading httplib2
 from json import loads, dumps
 from math import floor, ceil
 from random import randint
+from threading import Lock
+from time import time
 from urlparse import parse_qs
 
-from threading import Lock
-
 import httplib2
+import hmac
+import logging
+import logging.config
 import re
-import wsgiref.util
-
-from logging import getLogger
-
 import socket
+import wsgiref.util
+import yaml
 
-LOGGER = getLogger("error")
+SECRET = "eyRuc7wLH4IRg"
+secrets = { 'OTPna' : SECRET}
 
 regions = []
 router_list_url = "http://test.deployer.opentripplanner.org/get_servers?groups=otpna"
-router_list_url = "http://localhost:1111"
+
+config = yaml.load(open('logging.conf', 'r'))
+logging.config.dictConfig(config)
+
+LOGGER = logging.getLogger("error")
+REQUEST_LOGGER = logging.getLogger("otp.request")
+logging.basicConfig(filename='access.log',level=logging.DEBUG)
 
 lock = Lock()
 
@@ -283,6 +291,26 @@ def check_endpoints(args):
         return [True]
     return out
 
+def check_query_signature(args):
+    api_key = args.get('apiKey', ' ')[0]
+    if not api_key in secrets:
+        return False
+
+    secret = secrets[api_key]
+    h = hmac.new(secret)
+
+    h.update(api_key + args['fromPlace'][0] + args['toPlace'][0])
+    return h.hexdigest() == args.get('signature', '')
+
+def log_request(environ, router, duration, status):
+    #request time, URL, API key, router selected, and
+    #subrequest duration
+    args = parse_qs(environ['QUERY_STRING'])
+    api_key = args.get('apiKey', ['None'])[0]
+
+    REQUEST_LOGGER.info("%s %s %s %s %s", status, wsgiref.util.request_uri(environ), api_key, router, duration)
+
+
 def handle(environ, start_response):
 
     if not regions:
@@ -292,17 +320,31 @@ def handle(environ, start_response):
 
     if environ['PATH_INFO'] == "/check-endpoints":
         start_response('200 OK', [])
-        return [dumps(check_endpoints(args))]
+        startTime = time()
+        response = dumps(check_endpoints(args))
+        log_request(environ, None, time() - startTime, 200)
+        return [response]
 
     if not environ['PATH_INFO'] == '/opentripplanner-api-webapp/ws/plan':
         response_headers = [('Content-Type', 'text/plain')]
         start_response('404 Not found', response_headers)
+        log_request(environ, None, 0, 404)
         return ["Not found"]
+
+    if not check_query_signature(args):
+        response_headers = [('Content-Type', 'text/plain')]
+        start_response('403 Forbidden', response_headers)
+        log_request(environ, None, 0, 403)
+        return ["Forbidden"]
+        
 
     if 'reload' in args:
         init()
+        log_request(environ, None, 0, 200)
         start_response('200 OK', [])
         return ["Reloaded"]
+
+    startTime = time()
 
     fromPlace = args['fromPlace'][0]
     toPlace = args['toPlace'][0]
@@ -348,6 +390,7 @@ def handle(environ, start_response):
                     continue
 
                 del resp['transfer-encoding']
+                log_request(environ, None, time() - startTime, 200)
                 start_response("200 OK", resp.items())
                 return [content]
             except IOError, e:
@@ -357,11 +400,13 @@ def handle(environ, start_response):
         status = '500 Internal Server Error'
         response_headers = [('Content-Type', 'text/plain')]
         start_response(status, response_headers)
+        log_request(environ, None, time() - startTime, 500)
         return ["There was a server that could have answered, but it didn't."]
     else:
         status = '404 Not Found'
         response_headers = [('Content-Type', 'text/plain')]
         start_response(status, response_headers)
+        log_request(environ, None, time() - startTime, 404)
         return ["lat, lon %s, %s is out of range " % (lat, lon)]
 
 
