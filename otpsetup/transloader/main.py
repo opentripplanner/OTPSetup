@@ -39,6 +39,9 @@ def s3_key(bucket, gtfsfile):
 def process_transload(conn, body, message):
     #attempt to download the URL
     url = body['transload']
+    if not url.startswith("http://") and not url.startswith("https://"):
+        url = "http://%s" % url
+
     #make sure this still makes sense
     gtfs = GtfsFile.objects.get(id=body['gtfs_file_id'])
     irequest = gtfs.instance_request
