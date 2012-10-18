@@ -389,7 +389,8 @@ def handle(environ, start_response):
                     log.error("Status " + status + " while processing " + url + "\n")
                     continue
 
-                del resp['transfer-encoding']
+                if 'transfer-encoding' in resp:
+                    del resp['transfer-encoding']
                 log_request(environ, None, time() - startTime, 200)
                 start_response("200 OK", resp.items())
                 return [content]
