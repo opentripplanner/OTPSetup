@@ -95,9 +95,16 @@ def make_bbox_record(coords):
 VERTICAL_REGIONS=1000
 
 def index_coords (coords, bbox, index = None):
+    """Create an index of the given polygon; the index divides the
+    polygon into VERTICAL_REGIONS+1 vertically stacked regions, with
+    each region having a list of all of the edges of the polygon
+    which pass through it.  For sensible polygons, this allows
+    constant-time containment tests, and for insane polygons, it's
+    no worse than not having it.
+    """
     if not index:
         index = []
-        for i in range(VERTICAL_REGIONS):
+        for i in range(VERTICAL_REGIONS + 1):
             index.append([])
 
     min_lat = bbox['miny']
