@@ -300,7 +300,7 @@ def check_query_signature(args):
     h = hmac.new(secret)
 
     h.update(api_key + args['fromPlace'][0] + args['toPlace'][0])
-    return h.hexdigest() == args.get('signature', '')
+    return h.hexdigest() == args.get('signature', '')[0]
 
 def log_request(environ, router, duration, status):
     #request time, URL, API key, router selected, and
