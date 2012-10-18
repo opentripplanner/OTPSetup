@@ -157,7 +157,7 @@ def load_server_data(url):
                 found = True
                 break
         if found:
-            break
+            continue
 
         #no existing region
         bbox = make_bbox_record(coords)
