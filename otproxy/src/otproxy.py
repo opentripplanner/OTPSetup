@@ -20,8 +20,14 @@ import socket
 import wsgiref.util
 import yaml
 
-SECRET = "eyRuc7wLH4IRg"
-secrets = { 'OTPna' : SECRET}
+
+secrets = {}
+f = open("secrets.txt")
+for line in f:
+    if line.startswith("#"):
+        continue
+    key, secret = line.strip().split(":")
+    secrets[key] = secret
 
 regions = []
 router_list_url = "http://test.deployer.opentripplanner.org/get_servers?groups=otpna"
