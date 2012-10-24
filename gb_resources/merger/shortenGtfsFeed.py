@@ -2,7 +2,7 @@
 # Shorten GTFS: shorten a GTFS so that there is no service after the date specified by the first argument
 
 from sys import argv
-import csv
+import csv, chardet
 from cStringIO import StringIO
 from zipfile import ZipFile
 from sets import Set
@@ -17,12 +17,30 @@ serviceIds = Set()
 # store a list of ref'd trips and use it to prune stop_times.txt
 trips = Set()
 
+def get_reader(infile, filename):
+    content = infile.open(filename).read()
+    if chardet.detect(content)['encoding'] == "UTF-8":
+    
+        content=content.decode("utf-8")
+        content=content.encode("ascii", "ignore")
+
+        f = open(filename, 'w')
+        f.write(content)
+        f.close()
+
+        return csv.DictReader(open(filename), skipinitialspace=True)
+
+    else:
+        return csv.DictReader(infile.open(filename), skipinitialspace=True)
+        
+
 with ZipFile(infileName) as infile:
     with ZipFile(outfileName, 'w') as outfile:
 
         try:
-            reader = csv.DictReader(infile.open('calendar.txt'))
-
+            
+            reader = get_reader(infile, "calendar.txt")
+            
         except KeyError:
             pass
 
@@ -45,7 +63,7 @@ with ZipFile(infileName) as infile:
             output.close()
 
         try:
-            reader = csv.DictReader(infile.open('calendar_dates.txt'))
+            reader = get_reader(infile, 'calendar_dates.txt')
 
         except KeyError:
             pass
@@ -65,7 +83,7 @@ with ZipFile(infileName) as infile:
 
         # Get the trips, dropping unref'd ones
         try:
-            reader = csv.DictReader(infile.open('trips.txt'))
+            reader = get_reader(infile, 'trips.txt')
         
         except KeyError:
             pass
@@ -88,7 +106,7 @@ with ZipFile(infileName) as infile:
 
         # drop unref'd stop times
         try:
-            reader = csv.DictReader(infile.open('stop_times.txt'))
+            reader = get_reader(infile, 'stop_times.txt')
         
         except KeyError:
             pass
@@ -111,4 +129,3 @@ with ZipFile(infileName) as infile:
                     
             else:
                outfile.writestr(name, infile.read(name))
-
