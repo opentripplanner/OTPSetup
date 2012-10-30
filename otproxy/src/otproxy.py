@@ -165,7 +165,12 @@ def load_server_data(url):
     json = loads(content)
     items = json['routerInfo']
     for router in items:
-        routerInfo = router['RouterInfo']
+
+        #this varies across OTP versions
+        if 'RouterInfo' in router:
+            routerInfo = router['RouterInfo']
+        else:
+            routerInfo = router
         coords = routerInfo['polygon']['coordinates']
         #coords is a list of lists of 2-element lists we would like to check it
         #against the existing regions
