@@ -345,14 +345,18 @@ def log_request(environ, router, duration, status):
         uri = wsgiref.util.request_uri(environ)
         REQUEST_LOGGER.info("%s %s %s %s %s", status, uri, api_key, router, duration)
 
-        cube.put("request", {"status" : status,
-                             "uri" : uri,
-                             "api_key" : api_key,
-                             "router" : router,
-                             "duration" : duration,
-                             "time" : datetime.now().isoformat()
-                             }
-                 )
+        data = {"status" : status,
+                "uri" : uri,
+                "api_key" : api_key,
+                "router" : router,
+                "duration" : duration,
+                "time" : datetime.now().isoformat(),
+                }
+        if 'fromPlace' in args:
+            data['fromPlace'] = args['fromPlace'][0]
+        if 'toPlace' in args:
+            data['toPlace'] = args['toPlace'][0]
+        cube.put("request", data)
     Greenlet.spawn(log)
 
 def handle(environ, start_response):
