@@ -1,3 +1,6 @@
+from cube import Cube
+from datetime import datetime
+from gevent import Greenlet
 from gevent.pool import Pool
 from gevent.wsgi import WSGIServer
 
@@ -20,6 +23,7 @@ import socket
 import wsgiref.util
 import yaml
 
+cube = Cube()
 
 secrets = {}
 f = open("secrets.txt")
@@ -331,13 +335,25 @@ def check_query_signature(args):
     return h.hexdigest() == args.get('signature', '')[0]
 
 def log_request(environ, router, duration, status):
-    #request time, URL, API key, router selected, and
-    #subrequest duration
-    args = parse_qs(environ['QUERY_STRING'])
-    api_key = args.get('apiKey', ['None'])[0]
 
-    REQUEST_LOGGER.info("%s %s %s %s %s", status, wsgiref.util.request_uri(environ), api_key, router, duration)
+    def log():
+        #request time, URL, API key, router selected, and
+        #subrequest duration
+        args = parse_qs(environ['QUERY_STRING'])
+        api_key = args.get('apiKey', ['None'])[0]
 
+        uri = wsgiref.util.request_uri(environ)
+        REQUEST_LOGGER.info("%s %s %s %s %s", status, uri, api_key, router, duration)
+
+        cube.put("request", {"status" : status,
+                             "uri" : uri,
+                             "api_key" : api_key,
+                             "router" : router,
+                             "duration" : duration,
+                             "time" : datetime.now().isoformat()
+                             }
+                 )
+    Greenlet.spawn(log)
 
 def handle(environ, start_response):
 
