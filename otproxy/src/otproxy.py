@@ -43,12 +43,17 @@ lock = Lock()
 
 def init():
     urls = get_server_list(router_list_url)
-    load_all_server_data(urls)
+    if urls:
+        load_all_server_data(urls)
+        return True
+    return False
 
 def get_server_list(url):
     h = httplib2.Http()
     resp, content = h.request(url, "GET",
                               headers={'Accept':'application/json'} )
+    if resp['status'] != '200':
+        return None
     urls = content.split(",")
     return urls
 
@@ -152,6 +157,9 @@ def load_server_data(url):
                                   headers={'Accept':'application/json'} )
     except socket.error, e:
         LOGGER.warn("Failed to load " + rurl + ": %s" % e)
+        return
+
+    if resp['status'] != '200':
         return
 
     json = loads(content)
@@ -349,13 +357,16 @@ def handle(environ, start_response):
         start_response('403 Forbidden', response_headers)
         log_request(environ, None, 0, 403)
         return ["Forbidden"]
-        
 
     if 'reload' in args:
-        init()
-        log_request(environ, None, 0, 200)
-        start_response('200 OK', [])
-        return ["Reloaded"]
+        if init():
+            log_request(environ, None, 0, 200)
+            start_response('200 OK', [])
+            return ["Reloaded"]
+        else:
+            log_request(environ, None, 0, 500)
+            start_response('500 Internal Server Error', [])
+            return ["Failed to reload"]
 
     startTime = time()
 
