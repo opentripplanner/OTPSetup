@@ -442,7 +442,7 @@ def handle(environ, start_response):
 
                 if 'transfer-encoding' in resp:
                     del resp['transfer-encoding']
-                log_request(environ, None, time() - startTime, 200)
+                log_request(environ, router['routerId'], time() - startTime, 200)
                 start_response("200 OK", resp.items())
                 return [content]
             except IOError, e:
