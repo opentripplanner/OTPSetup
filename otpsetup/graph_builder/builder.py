@@ -1,11 +1,13 @@
-import os, subprocess, re, math
+import os, subprocess, re, math, codecs
 from otpsetup import settings
 
 from boto import connect_s3
 from boto.s3.key import Key
 
+from xml.sax.saxutils import escape
+
 templatedir = os.path.join(settings.GRAPH_BUILDER_RESOURCE_DIR, 'templates')
-osmosisdir = os.path.join(settings.GRAPH_BUILDER_RESOURCE_DIR, 'osmosis')
+osmosisdir = os.path.join('/var/osm/osmosis')
 osmfilterdir = os.path.join(settings.GRAPH_BUILDER_RESOURCE_DIR, 'osmfilter')
 osmtoolsdir = os.path.join(settings.GRAPH_BUILDER_RESOURCE_DIR, 'osmtools')
 otpgbdir = os.path.join(settings.GRAPH_BUILDER_RESOURCE_DIR, 'otpgb')
@@ -44,6 +46,8 @@ def ned_available(polyfilename):
 
 def generate_osm_extract_polygon(workingdir):
 
+    print "generating extract polygon"
+
     # copy stop files to single directory
 
     stopsdir = os.path.join(workingdir, "stops")
@@ -72,22 +76,36 @@ def generate_osm_extract_polygon(workingdir):
 
 def generate_osm_extract(workingdir):
 
+    print "running osm extract"
+
     polyfile = os.path.join(workingdir, 'extract_poly.txt')
-    if(not os.path.isfile(polyfile)):
+    boundsfile = os.path.join(workingdir, 'extract_bounds.txt')
+
+    if(not os.path.isfile(polyfile) or not os.path.isfile(boundsfile)):
         generate_osm_extract_polygon(workingdir)
+
+    bfreader = open(boundsfile, 'r')
+    boundsarr = bfreader.read().strip().split(',')
+    bfreader.close()
 
     # run osm extract
 
+    extractfile_tmp = os.path.join(workingdir, 'extract_tmp.osm')
     extractfile = os.path.join(workingdir, 'extract.osm')
-    cmd = os.path.join(osmosisdir,'bin/osmosis')+' --rb '+settings.PLANET_OSM_PATH+' --bounding-polygon file='+polyfile+' --wx '+extractfile + "-tmp"
-    os.system(cmd)
+    #cmd = os.path.join(osmosisdir,'bin/osmosis')+' --rb '+settings.PLANET_OSM_PATH+' --bounding-polygon file='+polyfile+' --wx '+extractfile + "-tmp"
+    #os.system(cmd)
+    #cmdarr = [ os.path.join(osmosisdir,'bin/osmosis'), '--read-pgsql', 'host="localhost"', 'database="osmna"', 'user="otp"', 'password="osm"', '--dbb', 'left=%s' % boundsarr[0], 'right=%s' % boundsarr[1], 'bottom=%s' % boundsarr[2], 'top=%s' % boundsarr[3], '--bounding-polygon', 'file=%s' % polyfile, '--wx', extractfile_tmp]
+    #print cmdarr
+    #subprocess.call(cmdarr)
     
+    os.system('/var/osm/osmosis/bin/osmosis --read-pgsql host="localhost" database="osmna" user="otp" password="osm" --dbb left=%s right=%s bottom=%s top=%s --bounding-polygon file=%s --wx %s' % (boundsarr[0], boundsarr[1], boundsarr[2], boundsarr[3], polyfile, extractfile_tmp))
+
 
     #run osmfilter to exclude everything we don't use.
     #remember to keep this in sync with OSMGBI
-    cmd = os.path.join(osmfilterdir, 'osmfilter --keep-ways="highway= platform=" --keep-relations="(type=multipolygon and area=yes) or type=restriction or (type=route and route=road) or type=level_map" --keep-nodes= ' + extractfile + '-tmp -o=' + extractfile)
+    cmd = os.path.join(osmfilterdir, 'osmfilter --keep-ways="highway= platform=" --keep-relations="(type=multipolygon and area=yes) or type=restriction or (type=route and route=road) or type=level_map" --keep-nodes= ' + extractfile_tmp + ' -o=' + extractfile)
     os.system(cmd)
-    os.unlink(extractfile + "-tmp")
+    os.unlink(extractfile_tmp)
     
 
 def generate_graph_config(workingdir, fare_factory, extra_props_dict):
@@ -146,25 +164,28 @@ def generate_graph_config_managed(workingdir, feeds):
     fare_factory = 'org.opentripplanner.routing.impl.DefaultFareServiceFactory'
 
     if use_ned:
-        templatefile = open(os.path.join(templatedir, 'gb_ned.xml'), 'r')
+        templatefile = codecs.open(os.path.join(templatedir, 'gb_ned.xml'), encoding='utf-8')
     else:
-        templatefile = open(os.path.join(templatedir, 'gb_no_ned.xml'), 'r')
+        templatefile = codecs.open(os.path.join(templatedir, 'gb_no_ned.xml'), encoding='utf-8')
 
     gbxml = templatefile.read()
     templatefile.close()
 
-    gtfslist = ''
+    gtfslist = u''
     for feed in feeds:
         print " - %s" % feed['key']
         feedpath = os.path.join(workingdir, 'gtfs', '%s.zip' % feed['key'].split('/')[-1])
-        gtfslist += '                        <bean class="org.opentripplanner.graph_builder.model.GtfsBundle">\n'
-        gtfslist += '                            <property name="path" value="' + feedpath + '" />\n'
+        gtfslist += u'                        <bean class="org.opentripplanner.graph_builder.model.GtfsBundle">\n'
+        gtfslist += u'                            <property name="path" value="' + feedpath + '" />\n'
         if 'defaultAgencyId' in feed:
-            gtfslist += '                            <property name="defaultAgencyId" value="'+feed['defaultAgencyId']+'" />\n'
+            escapedId = escape(feed['defaultAgencyId'])
+            gtfslist += u'                            <property name="defaultAgencyId" value="'+escapedId+'" />\n'
+        if 'extraProperties' in feed:
+            gtfslist += feed['extraProperties']
         #if 'defaultBikesAllowed' in feed:
         #    gtfslist += '                            <property name="defaultBikesAllowed" value="'+feed['defaultBikesAllowed']+'" />\n'
 
-        gtfslist += '                        </bean>\n'
+        gtfslist += u'                        </bean>\n'
 
     if use_ned:
         gbxml = gbxml.format(graphpath=workingdir, gtfslist=gtfslist, osmpath=extractfile, nedcachepath=nedcachedir, awsaccesskey=settings.AWS_ACCESS_KEY_ID, awssecretkey=settings.AWS_SECRET_KEY, fare_factory=fare_factory)
@@ -172,7 +193,7 @@ def generate_graph_config_managed(workingdir, feeds):
         gbxml = gbxml.format(graphpath=workingdir, gtfslist=gtfslist, osmpath=extractfile, fare_factory=fare_factory)
 
     gbfilepath = os.path.join(workingdir, 'gb.xml')
-    gbfile = open(gbfilepath, 'w')
+    gbfile = codecs.open(gbfilepath, encoding='utf-8', mode='w')
     gbfile.write(gbxml)
     gbfile.close()
 

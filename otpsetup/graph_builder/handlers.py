@@ -16,6 +16,18 @@ exchange = Exchange("amq.direct", type="direct", durable=True)
 
 # helper functions
 
+def download_jar(otp_version):
+    print "downloading jar for %s" % otp_version
+    connection = connect_s3(settings.AWS_ACCESS_KEY_ID, settings.AWS_SECRET_KEY)
+    bucket = connection.get_bucket('otpsetup-resources')
+
+    key = Key(bucket)
+    key.key = '%s/graph-builder.jar' % otp_version
+
+    local_file = '/var/otp/resources/otpgb/graph-builder.jar'
+    key.get_contents_to_filename(local_file)
+
+
 def get_req_name(request_id):
     return "req%s_%s" % (request_id, datetime.now().strftime("%F-%T"))
 
@@ -183,8 +195,8 @@ def process_gtfs(conn, body):
 
     try:
         print 'process_gtfs'
-        print body['config']
-        config = json.loads(body['config'])
+        #print body['config']
+        #config = json.loads(body['config'])
 
         directory = "/mnt/gtfs%s" % body['id']
         bucket = managed_gtfs_bucket()
@@ -193,7 +205,7 @@ def process_gtfs(conn, body):
         i = 0
         agency_groups = { } 
         os.makedirs(os.path.join(directory, 'gtfs'))
-        for feed in config['feeds']:
+        for feed in body['feeds']:
             feedId = feed['feedId']
             print " - %s" % feedId
             
@@ -212,12 +224,19 @@ def process_gtfs(conn, body):
         print agency_groups
 
         agency_keys = { }
+        agency_original_keys = { }
 
         for agencyId in agency_groups:
             print "%s: %s" % (agencyId, len(agency_groups[agencyId]))
             agencyDir = os.path.join(directory, agencyId)
+
+            keyList = []
+            for feed in agency_groups[agencyId]:
+                keyList.append(feed['feedId'])
+            print "keyList: %s" % keyList
+            agency_original_keys[agencyId] = ",".join(keyList)
             
-            if len(agency_groups[agencyId]) > 1:
+            if len(agency_groups[agencyId]) > 1: # multiple feeds for agency -- shorten & merge required
 
                 # download & shorten feeds
                 os.makedirs(agencyDir)
@@ -257,7 +276,7 @@ def process_gtfs(conn, body):
 
                 to_transform = merged_path
  
-            else:
+            else: # single feed for agency ("standalone" feed) -- shorten only
 
                 os.makedirs(agencyDir)
                 feed = agency_groups[agencyId][0] 
@@ -279,7 +298,6 @@ def process_gtfs(conn, body):
 
 
             # transform
-
 
             transformed_path = os.path.join(agencyDir, "transformed.zip")
             transformjarpath = "/var/otp/resources/process_gtfs/transformer.jar"
@@ -310,7 +328,7 @@ def process_gtfs(conn, body):
 
         # publish process_gtfs_done message
         publisher = conn.Producer(routing_key="process_gtfs_done", exchange=exchange)
-        publisher.publish({ 'id' : body['id'], 'key_map' : agency_keys }) 
+        publisher.publish({ 'id' : body['id'], 'key_map' : agency_keys, 'original_keys_map' : agency_original_keys }) 
         print "published p_g_d msg"
 
 
@@ -331,16 +349,19 @@ def build_managed(conn, body):
 
         feeds = body['feeds']
 
-        if body['osm_key'] is None:
+        if body['osm_key'] is None or body['osm_key'] == "":
             print "no osm key"
             publisher = conn.Producer(routing_key="build_managed_osm", exchange=exchange)
-            publisher.publish({ 'id' : body['id'], 'feeds' : feeds, 'trigger_rebuild' : True })
+            publisher.publish({ 'id' : body['id'], 'feeds' : feeds, 'trigger_rebuild' : True, 'otp_version' : body['otp_version'] })
             return
 
         
         print "key exists, building"
 
         #config = json.loads(body['config'])
+
+        # download jar for specified OTP version
+        download_jar(body['otp_version'])
 
         # set up working directory
         req_name = "managed_%s" % get_req_name(body['id']);
@@ -415,7 +436,7 @@ def build_managed_osm(conn, body):
 
         if 'trigger_rebuild' in body and body['trigger_rebuild'] is True:
             publisher = conn.Producer(routing_key="build_managed", exchange=exchange)
-            publisher.publish({ 'id' : body['id'], 'osm_key' : osm_key, 'feeds' : feeds })
+            publisher.publish({ 'id' : body['id'], 'osm_key' : osm_key, 'feeds' : feeds, 'otp_version' : body['otp_version'] })
 
 
     except:
